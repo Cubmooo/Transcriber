@@ -8,8 +8,12 @@
                 "/Zi",
                 "/EHsc",
                 "/nologo",
-                "/Fe${fileDirname}\\${fileBasenameNoExtension}.exe",
-                "${file}"
+                "/I", "C:/portaudio/include",
+                "${file}",
+                "/Fe:", "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "/link",
+                "/LIBPATH:C:/portaudio/lib",
+                "portaudio.lib",
             ],
             "options": {
                 "cwd": "${fileDirname}"
