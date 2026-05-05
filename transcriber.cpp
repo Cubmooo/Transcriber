@@ -53,43 +53,42 @@ int fetchInput(){
 }
 
 void FFT(){
-    float peakProminenceThreshold = 0.3;
+    const int NUM_HARMONICS = 5;
+    const float MIN_FREQ = 50.0f;
+    const float MAX_FREQ = 2000.0f;
+
     while (true) {
         std::vector<float> localBuffer = sharedBuffer;
-        double* in = fftw_alloc_real(BUFFER_SIZE);
-        fftw_complex* out = fftw_alloc_complex(BUFFER_SIZE / 2 + 1);
 
-        for (int i = 0; i < BUFFER_SIZE; i++) {
+        int numBins = BUFFER_SIZE / 2 + 1;
+        double* in = fftw_alloc_real(BUFFER_SIZE);
+        fftw_complex* out = fftw_alloc_complex(numBins);
+
+        for (int i = 0; i < BUFFER_SIZE; i++)
             in[i] = static_cast<double>(localBuffer[i]);
-        }
 
         fftw_plan plan = fftw_plan_dft_r2c_1d(BUFFER_SIZE, in, out, FFTW_ESTIMATE);
         fftw_execute(plan);
 
-        double maxMag = 0;
-        for (int i = 0; i < BUFFER_SIZE / 2 + 1; i++) {
-            double mag = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
-            if (mag > maxMag) maxMag = mag;
-        }
+        std::vector<double> mag(numBins);
+        for (int i = 0; i < numBins; i++)
+            mag[i] = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
 
-        double threshold = maxMag * peakProminenceThreshold;
-        std::vector<std::pair<int, double>> largeMag;
-        for (int i = 0; i < BUFFER_SIZE / 2 + 1; i++) {
-            double mag = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
-            if (mag > threshold) {
-                largeMag.push_back({i, mag});
-            }
-        }
+        int minBin = (int)(MIN_FREQ * BUFFER_SIZE / SAMPLE_RATE);
+        int maxBin = std::min((int)(MAX_FREQ * BUFFER_SIZE / SAMPLE_RATE), numBins / NUM_HARMONICS);
 
-        if (!largeMag.empty()) {
-            auto lowestBin = std::min_element(largeMag.begin(), largeMag.end(),
-                [](const std::pair<int,double>& a, const std::pair<int,double>& b) {
-                    return a.first < b.first;
-                });
+        std::vector<double> hps(maxBin, 1.0);
+        for (int i = minBin; i < maxBin; i++)
+            for (int h = 1; h <= NUM_HARMONICS; h++)
+                if (i * h < numBins)
+                    hps[i] *= mag[i * h];
 
-            double freq = lowestBin->first * SAMPLE_RATE / (double)BUFFER_SIZE;
-            std::cout << "frequency: " << freq << " Hz\n" << std::flush;
-        }
+        int peakBin = minBin;
+        for (int i = minBin + 1; i < maxBin; i++)
+            if (hps[i] > hps[peakBin]) peakBin = i;
+
+        double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
+        std::cout << "frequency: " << freq << " Hz\n" << std::flush;
 
         fftw_destroy_plan(plan);
         fftw_free(in);
