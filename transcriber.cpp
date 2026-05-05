@@ -5,9 +5,11 @@
 #include <cmath>
 #include <fftw3.h>
 #include <portaudio.h>
+#include <chrono>
+#include <algorithm> 
 
 #define SAMPLE_RATE 16000
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 4096
 
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
 
@@ -51,6 +53,7 @@ int fetchInput(){
 }
 
 void FFT(){
+    float peakProminenceThreshold = 0.3;
     while (true) {
         std::vector<float> localBuffer = sharedBuffer;
         double* in = fftw_alloc_real(BUFFER_SIZE);
@@ -64,21 +67,35 @@ void FFT(){
         fftw_execute(plan);
 
         double maxMag = 0;
-        int maxBin = 0;
         for (int i = 0; i < BUFFER_SIZE / 2 + 1; i++) {
             double mag = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
-            if (mag > maxMag) {
-                maxMag = mag;
-                maxBin = i;
+            if (mag > maxMag) maxMag = mag;
+        }
+
+        double threshold = maxMag * peakProminenceThreshold;
+        std::vector<std::pair<int, double>> largeMag;
+        for (int i = 0; i < BUFFER_SIZE / 2 + 1; i++) {
+            double mag = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
+            if (mag > threshold) {
+                largeMag.push_back({i, mag});
             }
         }
 
-        double freq = maxBin * (double)SAMPLE_RATE / BUFFER_SIZE;
-        std::cout << "frequency: " << freq << " Hz " << std::flush;;
+        if (!largeMag.empty()) {
+            auto lowestBin = std::min_element(largeMag.begin(), largeMag.end(),
+                [](const std::pair<int,double>& a, const std::pair<int,double>& b) {
+                    return a.first < b.first;
+                });
+
+            double freq = lowestBin->first * SAMPLE_RATE / (double)BUFFER_SIZE;
+            std::cout << "frequency: " << freq << " Hz\n" << std::flush;
+        }
 
         fftw_destroy_plan(plan);
         fftw_free(in);
         fftw_free(out);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
