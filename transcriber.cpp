@@ -1,10 +1,15 @@
-#include "pch.h"
+#include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
+#include <cmath>
+#include <fftw3.h>
+#include <portaudio.h>
+
 #define SAMPLE_RATE 16000
 #define BUFFER_SIZE 512
 
-int FFT(){
-    return 0;
-}
+std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
 
 int secondsToBeats(){
     return 0;
@@ -19,30 +24,13 @@ void UIButtons(){
 }
 
 int fetchInput(){
-    PaError err = Pa_Initialize();
+    Pa_Initialize();
 
-    PaDeviceIndex inputDevice = Pa_GetDefaultInputDevice();
-    std::cout << inputDevice;
-    std::cout << "mic";
-    if (inputDevice == paNoDevice) {
-        fprintf(stderr, "no mic");
-        Pa_Terminate();
-        return -1;
-    }
-
-    int numDevices = Pa_GetDeviceCount();
-    for (int i = 0; i < numDevices; i++) {
-        const PaDeviceInfo* info = Pa_GetDeviceInfo(i);
-        if (info->maxInputChannels > 0) {
-            printf("[%d] %s (inputs: %d)\n", i, info->name, info->maxInputChannels);
-    }
-}
-
-     PaStream* stream;
+    PaStream* stream;
     Pa_OpenDefaultStream(&stream,
         1,
-        0, 
-        paInt32,
+        0,
+        paFloat32,
         SAMPLE_RATE,
         BUFFER_SIZE,
         nullptr,
@@ -51,34 +39,57 @@ int fetchInput(){
 
     Pa_StartStream(stream);
 
-    std::vector<int16_t> buffer(BUFFER_SIZE);
-
     while (true) {
-        Pa_ReadStream(stream, buffer.data(), BUFFER_SIZE);
-        
-        for (int i = 0; i < BUFFER_SIZE; i++) {
-            std::cout << buffer[i] << " ";
-        }
-        std::cout << "\n";
+        Pa_ReadStream(stream, sharedBuffer.data(), BUFFER_SIZE);
+        std::cout << "3\n" << std::flush;
     }
 
     Pa_StopStream(stream);
     Pa_CloseStream(stream);
     Pa_Terminate();
-
-    std::cout << "After Pa_Initialize" << std::endl;
     return 0;
 }
 
+void FFT(){
+    while (true) {
+        std::vector<float> localBuffer = sharedBuffer;
+        double* in = fftw_alloc_real(BUFFER_SIZE);
+        fftw_complex* out = fftw_alloc_complex(BUFFER_SIZE / 2 + 1);
+
+        for (int i = 0; i < BUFFER_SIZE; i++) {
+            in[i] = static_cast<double>(localBuffer[i]);
+        }
+
+        fftw_plan plan = fftw_plan_dft_r2c_1d(BUFFER_SIZE, in, out, FFTW_ESTIMATE);
+        fftw_execute(plan);
+
+        double maxMag = 0;
+        int maxBin = 0;
+        for (int i = 0; i < BUFFER_SIZE / 2 + 1; i++) {
+            double mag = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
+            if (mag > maxMag) {
+                maxMag = mag;
+                maxBin = i;
+            }
+        }
+
+        double freq = maxBin * (double)SAMPLE_RATE / BUFFER_SIZE;
+        std::cout << "frequency: " << freq << " Hz " << std::flush;;
+
+        fftw_destroy_plan(plan);
+        fftw_free(in);
+        fftw_free(out);
+    }
+}
+
 int main(){
-    std::cerr << "MAIN STARTED\n";
-    std::cout << "Hello World!"<< std::endl;
+    std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
     std::thread FftAnalyser(secondsToBeats);
     std::thread UI(InitialiseUI);
     std::thread UIInteraction(UIButtons);
-    
+
     mic.join();
     FftThread.join();
     FftAnalyser.join();
