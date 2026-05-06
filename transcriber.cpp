@@ -6,16 +6,43 @@
 #include <fftw3.h>
 #include <portaudio.h>
 #include <chrono>
-#include <algorithm> 
+#include <algorithm>
+#include <mutex>
+#include <condition_variable> 
 
 #define SAMPLE_RATE 16000
 #define BUFFER_SIZE 4096
 
+std::mutex mtx;
+std::condition_variable cv;
+double sharedFrequency;
+bool freqHandOverReady = false;
+
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
 
+static const auto START = std::chrono::steady_clock::now();
+
 int secondsToBeats(){
-    return 0;
+    double freq;
+    std::vector<std::pair<double, std::chrono::duration<int64_t, std::nano>>> realTimeList;
+    while(true){
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                cv.wait(lock, [] { return freqHandOverReady; });
+                freq = std::round(sharedFrequency / 5.0) * 5.0;
+                freqHandOverReady = false;
+            }
+        if (realTimeList.empty()){}
+        else if(realTimeList.back().first != freq){} 
+        else{continue;}
+        auto time = std::chrono::steady_clock::now() - START;
+        realTimeList.emplace_back(freq, time);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(realTimeList.back().second);
+        std::cout << realTimeList.back().first << "Hz\n" << std::flush;
+        std::cout << ms.count() << "ms\n\n" << std::flush;
+    }
 }
+
 
 void InitialiseUI(){
     return;
@@ -43,7 +70,7 @@ int fetchInput(){
 
     while (true) {
         Pa_ReadStream(stream, sharedBuffer.data(), BUFFER_SIZE);
-        std::cout << "3\n" << std::flush;
+        /*std::cout << "3\n" << std::flush;*/
     }
 
     Pa_StopStream(stream);
@@ -88,17 +115,24 @@ void FFT(){
             if (hps[i] > hps[peakBin]) peakBin = i;
 
         double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
-        std::cout << "frequency: " << freq << " Hz\n" << std::flush;
+        /*std::cout << "frequency: " << freq << " Hz\n" << std::flush;*/
 
         fftw_destroy_plan(plan);
         fftw_free(in);
         fftw_free(out);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            sharedFrequency = freq;
+            freqHandOverReady = true;
+        }
+         cv.notify_one();
+
     }
 }
 
 int main(){
+    std::cout << START.time_since_epoch().count() << std::flush;
     std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
