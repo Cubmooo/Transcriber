@@ -8,49 +8,30 @@
 #include <chrono>
 #include <algorithm>
 #include <mutex>
-#include <condition_variable> 
+#include <condition_variable>
+#include <Eigen/Dense>
 
 #define SAMPLE_RATE 16000
-#define BUFFER_SIZE 4096
+//defines sample rate
+#define BUFFER_SIZE 2048
+#define BPM_BUFFER_SIZE 48000
+
+const double PI = 3.14159265358979323846;
 
 std::mutex mtx;
 std::condition_variable cv;
 double sharedFrequency;
 bool freqHandOverReady = false;
+bool getBMPReady = false;
+std::condition_variable cvBPM;
 
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
+std::vector<float> sharedBPMBuffer(BPM_BUFFER_SIZE, 0.0f);
 
 static const auto START = std::chrono::steady_clock::now();
 
-int secondsToBeats(){
-    double freq;
-    std::vector<std::pair<double, std::chrono::duration<int64_t, std::nano>>> realTimeList;
-    while(true){
-            {
-                std::unique_lock<std::mutex> lock(mtx);
-                cv.wait(lock, [] { return freqHandOverReady; });
-                freq = std::round(sharedFrequency / 5.0) * 5.0;
-                freqHandOverReady = false;
-            }
-        if (realTimeList.empty()){}
-        else if(realTimeList.back().first != freq){} 
-        else{continue;}
-        auto time = std::chrono::steady_clock::now() - START;
-        realTimeList.emplace_back(freq, time);
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(realTimeList.back().second);
-        std::cout << realTimeList.back().first << "Hz\n" << std::flush;
-        std::cout << ms.count() << "ms\n\n" << std::flush;
-    }
-}
-
-
-void InitialiseUI(){
-    return;
-}
-
-void UIButtons(){
-    return;
-}
+using TimeDuration = std::chrono::duration<int64_t, std::nano>;
+std::vector<std::pair<double, TimeDuration>> sharedRealTimeList;
 
 int fetchInput(){
     Pa_Initialize();
@@ -70,6 +51,7 @@ int fetchInput(){
 
     while (true) {
         Pa_ReadStream(stream, sharedBuffer.data(), BUFFER_SIZE);
+        Pa_ReadStream(stream, sharedBPMBuffer.data(), BPM_BUFFER_SIZE);
         /*std::cout << "3\n" << std::flush;*/
     }
 
@@ -131,12 +113,117 @@ void FFT(){
     }
 }
 
+int secondsToBeats(){
+    double freq;
+    std::vector<std::pair<double, std::chrono::duration<int64_t, std::nano>>> realTimeList;
+    while(true){
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [] { return freqHandOverReady; });
+            freq = sharedFrequency;
+            /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0;*/
+            freqHandOverReady = false;
+        }
+        if (realTimeList.empty()){}
+        else if(realTimeList.back().first != freq){} 
+        else{continue;}
+        auto time = std::chrono::steady_clock::now() - START;
+        realTimeList.emplace_back(freq, time);
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            sharedRealTimeList = realTimeList;
+            getBMPReady = true;
+        }
+        cvBPM.notify_one(); 
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(realTimeList.back().second);
+        std::cout << realTimeList.back().first << "Hz\n" << std::flush;
+        std::cout << ms.count() << "ms\n\n" << std::flush;
+    }
+}
+
+void magReggression(){
+    const int MIN_BPM = 30;
+    const int MAX_BPM = 200;
+    const int BPM_SAMPLES = 1000;
+    const int MAX_WINDOW = 10;
+
+    while (true){
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cvBPM.wait(lock, []{ return getBMPReady; });
+            getBMPReady = false;
+        }
+        std::vector<std::pair<double,double>> BPMBuffer;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (sharedRealTimeList.empty()) continue;
+
+            double latestSec =
+                std::chrono::duration<double>(sharedRealTimeList.back().second).count();
+            double cutoffSec = latestSec - MAX_WINDOW;
+
+            for (auto& entry : sharedRealTimeList){
+                double tSec = std::chrono::duration<double>(entry.second).count();
+                if (tSec >= cutoffSec)
+                    BPMBuffer.emplace_back(tSec, entry.first);
+            }
+        }
+        const int N = static_cast<int>(BPMBuffer.size());
+
+        double bestOmega = 0.0;
+        double bestResidual = std::numeric_limits<double>::max();
+        double bestA = 0.0, bestB = 0.0;
+
+        Eigen::VectorXd y(N);
+        for (int i = 0; i < N; ++i)
+            y(i) = BPMBuffer[i].second;
+
+        for (int step = 0; step <= BPM_SAMPLES; ++step){
+            double omegaHz = (MIN_BPM + (MAX_BPM - MIN_BPM) * step / BPM_SAMPLES) / 60;
+            double omega = 2.0 * PI * omegaHz;
+
+            Eigen::MatrixXd Phi(N, 3);
+            for (int i = 0; i < N; ++i){
+                double t = BPMBuffer[i].first;
+                Phi(i, 0) = std::sin(omega * t);
+                Phi(i, 1) = std::cos(omega * t);
+                Phi(i, 2) = 1.0; 
+            }
+
+            Eigen::VectorXd x =
+                Phi.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(y);
+
+            double residual = (Phi * x - y).squaredNorm();
+
+            if (residual < bestResidual){
+                bestResidual = residual;
+                bestOmega    = omega;
+                bestA        = x(0);
+                bestB        = x(1);
+            }
+        }
+        double bestFreqHz = (bestOmega / (2.0 * PI)) * 60;
+        double phase = std::atan2(bestB, bestA);
+
+        std::cout << "Regression freq: " << bestFreqHz << "phase:" << phase << " rad\n" << std::flush;
+    }
+}   
+
+void InitialiseUI(){
+    return;
+}
+
+void UIButtons(){
+    return;
+}
+
 int main(){
     std::cout << START.time_since_epoch().count() << std::flush;
     std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
     std::thread FftAnalyser(secondsToBeats);
+    std::thread pulseFinder(magReggression);
     std::thread UI(InitialiseUI);
     std::thread UIInteraction(UIButtons);
 
@@ -145,6 +232,7 @@ int main(){
     FftAnalyser.join();
     UI.join();
     UIInteraction.join();
+    pulseFinder.join();
 
     return 0;
 }

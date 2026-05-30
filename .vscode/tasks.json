@@ -7,7 +7,7 @@
             "command": "cmd.exe",
             "args": [
                 "/C",
-                "C:\\Program^ Files\\Microsoft^ Visual^ Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat && cl.exe /EHsc /I C:\\vcpkg\\installed\\x64-windows\\include \"${file}\" /Fe:\"${fileDirname}\\${fileBasenameNoExtension}.exe\" /link /LIBPATH:C:\\vcpkg\\installed\\x64-windows\\lib portaudio.lib fftw3.lib"
+                "C:\\Program^ Files\\Microsoft^ Visual^ Studio\\2022\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat && cl.exe /EHsc /I C:\\vcpkg\\installed\\x64-windows\\include /I C:\\vcpkg\\installed\\x64-windows\\include\\eigen3 \"${file}\" /Fe:\"${fileDirname}\\${fileBasenameNoExtension}.exe\" /link /LIBPATH:C:\\vcpkg\\installed\\x64-windows\\lib portaudio.lib fftw3.lib"
             ],
             "options": {
                 "cwd": "${fileDirname}",
