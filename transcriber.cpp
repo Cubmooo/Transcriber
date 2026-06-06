@@ -9,12 +9,10 @@
 #include <algorithm>
 #include <mutex>
 #include <condition_variable>
-#include <Eigen/Dense>
 
 #define SAMPLE_RATE 16000
 //defines sample rate
 #define BUFFER_SIZE 2048
-#define BPM_BUFFER_SIZE 48000
 
 const double PI = 3.14159265358979323846;
 
@@ -24,16 +22,14 @@ double sharedFrequency;
 bool freqHandOverReady = false;
 bool getBMPReady = false;
 std::condition_variable cvBPM;
-
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
-std::vector<float> sharedBPMBuffer(BPM_BUFFER_SIZE, 0.0f);
 
 static const auto START = std::chrono::steady_clock::now();
 
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
-std::vector<std::pair<double, TimeDuration>> sharedRealTimeList;
+std::vector<std::pair<double, double>> sharedRealTimeList;
 
-int fetchInput(){
+int fetchInput() {
     Pa_Initialize();
 
     PaStream* stream;
@@ -49,16 +45,18 @@ int fetchInput(){
 
     Pa_StartStream(stream);
 
+    static double prevEnergy = 0;
+
     while (true) {
         Pa_ReadStream(stream, sharedBuffer.data(), BUFFER_SIZE);
-        Pa_ReadStream(stream, sharedBPMBuffer.data(), BPM_BUFFER_SIZE);
-        /*std::cout << "3\n" << std::flush;*/
+
+        auto now = std::chrono::steady_clock::now() - START;
+        double timeSec = std::chrono::duration<double>(now).count();
     }
 
     Pa_StopStream(stream);
     Pa_CloseStream(stream);
     Pa_Terminate();
-    return 0;
 }
 
 void FFT(){
@@ -115,7 +113,9 @@ void FFT(){
 
 int secondsToBeats(){
     double freq;
-    std::vector<std::pair<double, std::chrono::duration<int64_t, std::nano>>> realTimeList;
+    double lastTimeStamp = 0.0;
+    std::vector<std::pair<double, double>> realTimeList;
+
     while(true){
         {
             std::unique_lock<std::mutex> lock(mtx);
@@ -124,88 +124,55 @@ int secondsToBeats(){
             /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0;*/
             freqHandOverReady = false;
         }
-        if (realTimeList.empty()){}
+        if (realTimeList.empty()){} 
         else if(realTimeList.back().first != freq){} 
         else{continue;}
-        auto time = std::chrono::steady_clock::now() - START;
-        realTimeList.emplace_back(freq, time);
+        
+        double time = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
+        realTimeList.emplace_back(freq, time - lastTimeStamp);
+        lastTimeStamp = time;
         {
             std::lock_guard<std::mutex> lock(mtx);
             sharedRealTimeList = realTimeList;
-            getBMPReady = true;
+            getBMPReady = true; 
         }
-        cvBPM.notify_one(); 
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(realTimeList.back().second);
-        std::cout << realTimeList.back().first << "Hz\n" << std::flush;
-        std::cout << ms.count() << "ms\n\n" << std::flush;
+        cvBPM.notify_one();
+        std::cout << realTimeList.back().first << "Hz\n" << realTimeList.back().second << "s\n\n" << std::flush;
     }
 }
 
 void magReggression(){
-    const int MIN_BPM = 30;
-    const int MAX_BPM = 200;
-    const int BPM_SAMPLES = 1000;
-    const int MAX_WINDOW = 10;
-
-    while (true){
+    std::vector<std::pair<double, double>> realTimeList;
+    std::vector<std::pair<double, int>> BPMTimeList;
+    double averageGap = 0.0;
+    float previousBeatLength = 0.0;
+    int beatLengthValue = 0;
+    while(true){
         {
             std::unique_lock<std::mutex> lock(mtx);
-            cvBPM.wait(lock, []{ return getBMPReady; });
+            cvBPM.wait(lock, [] { return getBMPReady; });
+            realTimeList = sharedRealTimeList;
             getBMPReady = false;
         }
-        std::vector<std::pair<double,double>> BPMBuffer;
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            if (sharedRealTimeList.empty()) continue;
-
-            double latestSec =
-                std::chrono::duration<double>(sharedRealTimeList.back().second).count();
-            double cutoffSec = latestSec - MAX_WINDOW;
-
-            for (auto& entry : sharedRealTimeList){
-                double tSec = std::chrono::duration<double>(entry.second).count();
-                if (tSec >= cutoffSec)
-                    BPMBuffer.emplace_back(tSec, entry.first);
-            }
+        int noPlayedNotes = sharedRealTimeList.size();
+        /*std::cout << noPlayedNotes << "\n" << std::flush;*/
+        if (noPlayedNotes == 1){
+            realTimeList.emplace_back(realTimeList.back().first, realTimeList.back().second);
+            continue;
         }
-        const int N = static_cast<int>(BPMBuffer.size());
+        averageGap = (realTimeList.back().second + (noPlayedNotes - 2) * averageGap) / (noPlayedNotes - 1);
+        float BPM = 1 / averageGap;
+        
+        beatLengthValue = - floor( log2 (BPM * 0.75 * realTimeList.back().second));
+        float beatLength = pow(2, beatLengthValue);
 
-        double bestOmega = 0.0;
-        double bestResidual = std::numeric_limits<double>::max();
-        double bestA = 0.0, bestB = 0.0;
-
-        Eigen::VectorXd y(N);
-        for (int i = 0; i < N; ++i)
-            y(i) = BPMBuffer[i].second;
-
-        for (int step = 0; step <= BPM_SAMPLES; ++step){
-            double omegaHz = (MIN_BPM + (MAX_BPM - MIN_BPM) * step / BPM_SAMPLES) / 60;
-            double omega = 2.0 * PI * omegaHz;
-
-            Eigen::MatrixXd Phi(N, 3);
-            for (int i = 0; i < N; ++i){
-                double t = BPMBuffer[i].first;
-                Phi(i, 0) = std::sin(omega * t);
-                Phi(i, 1) = std::cos(omega * t);
-                Phi(i, 2) = 1.0; 
-            }
-
-            Eigen::VectorXd x =
-                Phi.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(y);
-
-            double residual = (Phi * x - y).squaredNorm();
-
-            if (residual < bestResidual){
-                bestResidual = residual;
-                bestOmega    = omega;
-                bestA        = x(0);
-                bestB        = x(1);
-            }
+        if (!BPMTimeList.empty()){
+            BPMTimeList.emplace_back(realTimeList.back().first, BPMTimeList.back().second + previousBeatLength);
         }
-        double bestFreqHz = (bestOmega / (2.0 * PI)) * 60;
-        double phase = std::atan2(bestB, bestA);
-
-        std::cout << "Regression freq: " << bestFreqHz << "phase:" << phase << " rad\n" << std::flush;
+        else{BPMTimeList.emplace_back(realTimeList.back().first, previousBeatLength);}
+        previousBeatLength = beatLength;
+        std::cout << "beatLengthValue:" << beatLengthValue << "\n" <<std::flush;
+        std::cout << "BPMlist: " <<BPMTimeList.back().first << "," << BPMTimeList.back().second << "\n" << std::flush;
     }
 }   
 
@@ -226,6 +193,7 @@ int main(){
     std::thread pulseFinder(magReggression);
     std::thread UI(InitialiseUI);
     std::thread UIInteraction(UIButtons);
+    
 
     mic.join();
     FftThread.join();
