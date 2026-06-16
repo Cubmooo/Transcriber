@@ -16,7 +16,8 @@
                 }
             ],
             "console": "integratedTerminal",
-            "preLaunchTask": "C/C++: cl.exe build active file"
+            "preLaunchTask": "C/C++: cl.exe build active file",
+            "visualizerFile": "c:\\Users\\Joshua Davies\\AppData\\Roaming\\Code\\User\\workspaceStorage\\f0298b987df5531219d98c31bc2b303c\\tonka3000.qtvsctools\\qt.natvis.xml"
         }
     ]
 }

@@ -9,6 +9,13 @@
 #include <algorithm>
 #include <mutex>
 #include <condition_variable>
+#include <QApplication>
+#include <QMainWindow>
+#include <QPushButton>
+#include <QLabel>
+#include <QString>
+#include <QTimer>
+#include "mainwindow.h"
 
 #define SAMPLE_RATE 16000
 //defines sample rate
@@ -28,7 +35,7 @@ static const auto START = std::chrono::steady_clock::now();
 
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 std::vector<std::pair<double, double>> sharedRealTimeList;
-
+/*
 int fetchInput() {
     Pa_Initialize();
 
@@ -95,7 +102,7 @@ void FFT(){
             if (hps[i] > hps[peakBin]) peakBin = i;
 
         double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
-        /*std::cout << "frequency: " << freq << " Hz\n" << std::flush;*/
+        /*std::cout << "frequency: " << freq << " Hz\n" << std::flush; -----
 
         fftw_destroy_plan(plan);
         fftw_free(in);
@@ -121,7 +128,7 @@ int secondsToBeats(){
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [] { return freqHandOverReady; });
             freq = sharedFrequency;
-            /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0;*/
+            /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0; -------
             freqHandOverReady = false;
         }
         if (realTimeList.empty()){} 
@@ -155,7 +162,7 @@ void magReggression(){
             getBMPReady = false;
         }
         int noPlayedNotes = sharedRealTimeList.size();
-        /*std::cout << noPlayedNotes << "\n" << std::flush;*/
+        /*std::cout << noPlayedNotes << "\n" << std::flush; --------
         if (noPlayedNotes == 1){
             realTimeList.emplace_back(realTimeList.back().first, realTimeList.back().second);
             continue;
@@ -175,32 +182,27 @@ void magReggression(){
         std::cout << "BPMlist: " <<BPMTimeList.back().first << "," << BPMTimeList.back().second << "\n" << std::flush;
     }
 }   
+*/
 
-void InitialiseUI(){
-    return;
-}
+int main(int argc, char *argv[]){
+    std::cout << "NEW BUILD RUNNING\n";
+    QApplication app(argc, argv);
 
-void UIButtons(){
-    return;
-}
+    MainWindow window;
+    window.show();
 
-int main(){
-    std::cout << START.time_since_epoch().count() << std::flush;
+
+    /*std::cout << START.time_since_epoch().count() << std::flush;
     std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
     std::thread FftAnalyser(secondsToBeats);
     std::thread pulseFinder(magReggression);
-    std::thread UI(InitialiseUI);
-    std::thread UIInteraction(UIButtons);
+
+    mic.detach();
+    FftThread.detach();
+    FftAnalyser.detach();
+    pulseFinder.detach();*/
     
-
-    mic.join();
-    FftThread.join();
-    FftAnalyser.join();
-    UI.join();
-    UIInteraction.join();
-    pulseFinder.join();
-
-    return 0;
+    return app.exec();
 }

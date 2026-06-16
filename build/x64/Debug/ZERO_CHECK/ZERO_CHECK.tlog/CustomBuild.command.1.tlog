@@ -1,6 +1,6 @@
 ^C:\USERS\JOSHUA DAVIES\ONEDRIVE - SAINT KENTIGERN\COMP SCI\TRANSCRIBER\BUILD\CMAKEFILES\0A4DB7DF2B78B399162886BD6D9A4FE8\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber" "-BC:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build/Transcriber.slnx"
+"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber" "-BC:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build/MyProject.slnx"
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
