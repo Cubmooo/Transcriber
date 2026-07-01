@@ -1,20 +1,4 @@
-#include <iostream>
-#include <string>
-#include <thread>
-#include <vector>
-#include <cmath>
-#include <fftw3.h>
-#include <portaudio.h>
-#include <chrono>
-#include <algorithm>
-#include <mutex>
-#include <condition_variable>
-#include <QApplication>
-#include <QMainWindow>
-#include <QPushButton>
-#include <QLabel>
-#include <QString>
-#include <QTimer>
+#include "pch/pch.h"
 #include "mainwindow.h"
 
 #define SAMPLE_RATE 16000
@@ -24,18 +8,22 @@
 const double PI = 3.14159265358979323846;
 
 std::mutex mtx;
+std::mutex bpmMtx;
 std::condition_variable cv;
+std::condition_variable cvBPM;
 double sharedFrequency;
 bool freqHandOverReady = false;
 bool getBMPReady = false;
-std::condition_variable cvBPM;
+bool bpmReady = false;
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
+
 
 static const auto START = std::chrono::steady_clock::now();
 
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 std::vector<std::pair<double, double>> sharedRealTimeList;
-/*
+std::vector<std::pair<double, int>> BPMTimeList;
+
 int fetchInput() {
     Pa_Initialize();
 
@@ -102,7 +90,7 @@ void FFT(){
             if (hps[i] > hps[peakBin]) peakBin = i;
 
         double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
-        /*std::cout << "frequency: " << freq << " Hz\n" << std::flush; -----
+        /*std::cout << "frequency: " << freq << " Hz\n" << std::flush*/
 
         fftw_destroy_plan(plan);
         fftw_free(in);
@@ -128,7 +116,7 @@ int secondsToBeats(){
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [] { return freqHandOverReady; });
             freq = sharedFrequency;
-            /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0; -------
+            /*quantFreq = std::round(sharedFrequency / 5.0) * 5.0;*/
             freqHandOverReady = false;
         }
         if (realTimeList.empty()){} 
@@ -150,7 +138,7 @@ int secondsToBeats(){
 
 void magReggression(){
     std::vector<std::pair<double, double>> realTimeList;
-    std::vector<std::pair<double, int>> BPMTimeList;
+    BPMTimeList.emplace_back(0.0,0);
     double averageGap = 0.0;
     float previousBeatLength = 0.0;
     int beatLengthValue = 0;
@@ -162,7 +150,7 @@ void magReggression(){
             getBMPReady = false;
         }
         int noPlayedNotes = sharedRealTimeList.size();
-        /*std::cout << noPlayedNotes << "\n" << std::flush; --------
+        /*std::cout << noPlayedNotes << "\n" << std::flush;*/
         if (noPlayedNotes == 1){
             realTimeList.emplace_back(realTimeList.back().first, realTimeList.back().second);
             continue;
@@ -170,8 +158,18 @@ void magReggression(){
         averageGap = (realTimeList.back().second + (noPlayedNotes - 2) * averageGap) / (noPlayedNotes - 1);
         float BPM = 1 / averageGap;
         
+
+
         beatLengthValue = - floor( log2 (BPM * 0.75 * realTimeList.back().second));
         float beatLength = pow(2, beatLengthValue);
+
+        double time = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
+
+        std::lock_guard<std::mutex> lock(bpmMtx);
+        BPMTimeList.emplace_back(BPM, time);
+        bpmReady = true;
+
+        cvBPM.notify_one();
 
         if (!BPMTimeList.empty()){
             BPMTimeList.emplace_back(realTimeList.back().first, BPMTimeList.back().second + previousBeatLength);
@@ -182,17 +180,28 @@ void magReggression(){
         std::cout << "BPMlist: " <<BPMTimeList.back().first << "," << BPMTimeList.back().second << "\n" << std::flush;
     }
 }   
-*/
 
 int main(int argc, char *argv[]){
-    std::cout << "NEW BUILD RUNNING\n";
     QApplication app(argc, argv);
 
     MainWindow window;
+
+    std::vector<std::pair<double, int>> localBPMList;
+
+    {
+        std::lock_guard<std::mutex> lock(bpmMtx);
+        if (!BPMTimeList.empty()){
+        localBPMList = BPMTimeList;
+        }
+        else {
+            localBPMList.emplace_back(0.0, 0);
+        }
+    }
+    window.updateFrequency(localBPMList.back().first);
     window.show();
 
 
-    /*std::cout << START.time_since_epoch().count() << std::flush;
+    std::cout << START.time_since_epoch().count() << std::flush;
     std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
@@ -202,7 +211,7 @@ int main(int argc, char *argv[]){
     mic.detach();
     FftThread.detach();
     FftAnalyser.detach();
-    pulseFinder.detach();*/
+    pulseFinder.detach();
     
     return app.exec();
 }

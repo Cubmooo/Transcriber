@@ -26,14 +26,16 @@ find_library(FFTW3_LIBRARY
     PATHS ${CMAKE_SOURCE_DIR}/libs
 )
 
-message(STATUS "FFTW = ${FFTW3_LIBRARY}")
-
 find_library(PORTAUDIO_LIBRARY
     NAMES portaudio
     PATHS ${CMAKE_SOURCE_DIR}/libs
 )
 
-message(STATUS "PortAudio = ${PORTAUDIO_LIBRARY}")
+set_target_properties(MyProject PROPERTIES
+    VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${CMAKE_SOURCE_DIR}/libs"
+)
+
+target_precompile_headers(MyProject PRIVATE pch/pch.h)
 
 target_link_libraries(MyProject PRIVATE
     Qt6::Widgets

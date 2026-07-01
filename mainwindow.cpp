@@ -1,3 +1,4 @@
+#include "pch/pch.h"
 #include "mainwindow.h"
 #include <QString>
 
@@ -9,6 +10,8 @@ void MainWindow::updateFrequency(double freq)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    showMaximized();
+
     setWindowTitle("Hello Qt");
 
     label = new QLabel("Hello World", this);

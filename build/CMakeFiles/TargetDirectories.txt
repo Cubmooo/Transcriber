@@ -1,3 +1,0 @@
-C:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build/CMakeFiles/MyProject.dir
-C:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/Joshua Davies/OneDrive - Saint Kentigern/Comp Sci/Transcriber/build/CMakeFiles/ZERO_CHECK.dir
