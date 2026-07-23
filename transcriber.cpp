@@ -1,5 +1,7 @@
 #include "pch/pch.h"
+
 #include "mainwindow.h"
+#include "freqsender.h"
 
 #define SAMPLE_RATE 16000
 //defines sample rate
@@ -182,36 +184,28 @@ void magReggression(){
 }   
 
 int main(int argc, char *argv[]){
-    QApplication app(argc, argv);
-
-    MainWindow window;
-
-    std::vector<std::pair<double, int>> localBPMList;
-
-    {
-        std::lock_guard<std::mutex> lock(bpmMtx);
-        if (!BPMTimeList.empty()){
-        localBPMList = BPMTimeList;
-        }
-        else {
-            localBPMList.emplace_back(0.0, 0);
-        }
-    }
-    window.updateFrequency(localBPMList.back().first);
-    window.show();
-
-
     std::cout << START.time_since_epoch().count() << std::flush;
     std::cout << "main";
     std::thread mic(fetchInput);
     std::thread FftThread(FFT);
     std::thread FftAnalyser(secondsToBeats);
     std::thread pulseFinder(magReggression);
-
     mic.detach();
     FftThread.detach();
     FftAnalyser.detach();
     pulseFinder.detach();
     
+    QApplication app(argc, argv);
+    MainWindow window;
+
+    Sender sender;
+    QObject::connect(
+        &sender,
+        &Sender::newFreqRecived,
+        &window,
+        &MainWindow::updateFrequency
+    );
+
+    window.show();
     return app.exec();
 }

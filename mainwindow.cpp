@@ -2,18 +2,28 @@
 #include "mainwindow.h"
 #include <QString>
 
-void MainWindow::updateFrequency(double freq)
-{
-    label->setText(QString("Frequency: %1 Hz").arg(freq));
-}
+extern std::mutex mtx;
+extern std::vector<std::pair<double, int>> BPMTimeList;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     showMaximized();
-
     setWindowTitle("Hello Qt");
 
-    label = new QLabel("Hello World", this);
-    label->setGeometry(100, 100, 200, 50);
+    QWidget *central = new QWidget(this);
+    setCentralWidget(central);
+
+    label = new QLabel("Hello World", central);
+    label->move(100,100);
+    label->resize(300,50);
+}
+
+void MainWindow::updateFrequency(double freq)
+{
+    std::cout << "thign" << std::flush;
+    label->setText(QString("Frequency: %1 Hz").arg(freq));
+    label->adjustSize();
+    label->repaint();
+    return;
 }

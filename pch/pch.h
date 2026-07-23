@@ -16,6 +16,7 @@
 #include <QLabel>
 #include <QString>
 #include <QTimer>
+#include <QThread>
 
 #include <fftw3.h>
 #include <portaudio.h>

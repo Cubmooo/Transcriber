@@ -1,3 +1,4 @@
+#C:\Qt\6.11.1\msvc2022_64\bin\windeployqt.exe "C:\Users\Joshua Davies\OneDrive - Saint Kentigern\Comp Sci\Transcriber\build\Debug\MyProject.exe"
 cmake_minimum_required(VERSION 3.16)
 
 project(MyProject LANGUAGES CXX)
@@ -15,6 +16,8 @@ set(CMAKE_AUTORCC ON)
 add_executable(MyProject
     transcriber.cpp
     mainwindow.cpp
+    freqsender.cpp
+
 )
 
 target_include_directories(MyProject PRIVATE
