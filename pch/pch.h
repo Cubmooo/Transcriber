@@ -17,6 +17,12 @@
 #include <QString>
 #include <QTimer>
 #include <QThread>
+#include <QFontDatabase>
+#include <QWidget>
+#include <QPainter>
+#include <QFont>
+#include <QVBoxLayout>
+#include <QChar>
 
 #include <fftw3.h>
 #include <portaudio.h>

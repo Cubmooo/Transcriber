@@ -1,9 +1,10 @@
 #include "pch/pch.h"
 #include "mainwindow.h"
 #include <QString>
+#include <QVBoxLayout>
 
 extern std::mutex mtx;
-extern std::vector<std::pair<double, int>> BPMTimeList;
+extern std::vector<std::pair<int, int>> BPMTimeList;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -14,16 +15,24 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *central = new QWidget(this);
     setCentralWidget(central);
 
+    QVBoxLayout *layout = new QVBoxLayout(central);
+
+    stave = new StaveWidget(this);
+    layout->addWidget(stave);
+
     label = new QLabel("Hello World", central);
-    label->move(100,100);
-    label->resize(300,50);
+    layout->addWidget(label);
 }
 
-void MainWindow::updateFrequency(double freq)
+void MainWindow::updateFrequency(int note)
 {
-    std::cout << "thign" << std::flush;
-    label->setText(QString("Frequency: %1 Hz").arg(freq));
+    label->setText(QString("Frequency: %1 Hz").arg(note));
     label->adjustSize();
     label->repaint();
     return;
+}
+
+void MainWindow::updateStave(int note)
+{
+    stave->setNote(note);
 }

@@ -2,7 +2,7 @@
 
 extern std::mutex bpmMtx;
 extern bool bpmReady;
-extern std::vector<std::pair<double, int>> BPMTimeList;
+extern std::vector<std::pair<int, int>> BPMTimeList;
 
 Sender::Sender()
 {
@@ -20,16 +20,17 @@ Sender::Sender()
 
 void Sender::checkBPMTimeList()
 {
-    double freq;
+    int note;
 
     {
         std::lock_guard<std::mutex> lock(bpmMtx);
         if(!bpmReady)
             return;
 
-        freq = BPMTimeList.back().first;
+        note = BPMTimeList.back().first;
         bpmReady = false;
     }
 
-    emit newFreqRecived(freq);
+    emit newFreqRecived(note);
+    emit staveChangeNeeded(note);
 }

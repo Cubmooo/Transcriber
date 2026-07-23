@@ -1,7 +1,7 @@
 #include "globals.h"
 
 void magReggression(){
-    std::vector<std::pair<double, double>> realTimeList;
+    std::vector<std::pair<int, double>> realTimeList;
     BPMTimeList.emplace_back(0.0,0);
     double averageGap = 0.0;
     float previousBeatLength = 0.0;

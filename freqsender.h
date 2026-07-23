@@ -14,7 +14,8 @@ public slots:
     void checkBPMTimeList();
 
 signals:
-    void newFreqRecived(double freq);
+    void newFreqRecived(int note);
+    void staveChangeNeeded(int note);
 
 private:
     QTimer *timer;

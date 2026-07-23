@@ -18,15 +18,27 @@ int main(int argc, char *argv[]){
     FftAnalyser.detach();
     pulseFinder.detach();
     
+    int fontId = QFontDatabase::addApplicationFont(":/fonts/Leland.otf");
+    if (fontId != -1){
+        QString lelandFamily  = QFontDatabase::applicationFontFamilies(fontId).at(0);   
+    }
+
     QApplication app(argc, argv);
     MainWindow window;
 
     Sender sender;
+
     QObject::connect(
         &sender,
         &Sender::newFreqRecived,
         &window,
         &MainWindow::updateFrequency
+    );
+    QObject::connect(
+        &sender,
+        &Sender::staveChangeNeeded,
+        &window,
+        &MainWindow::updateStave
     );
 
     window.show();

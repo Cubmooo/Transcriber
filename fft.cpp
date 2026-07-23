@@ -39,6 +39,7 @@ void FFT(){
 
         double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
         /*std::cout << "frequency: " << freq << " Hz\n" << std::flush*/
+        int note = std::round(57 + 12 * std::log2(freq / 440.0));
 
         fftw_destroy_plan(plan);
         fftw_free(in);
@@ -46,8 +47,8 @@ void FFT(){
 
         {
             std::unique_lock<std::mutex> lock(mtx);
-            sharedFrequency = freq;
-            freqHandOverReady = true;
+            sharedNote = note;
+            noteHandOverReady = true;
         }
          cv.notify_one();
 

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Leland.otf</file>
+    </qresource>
+</RCC>
