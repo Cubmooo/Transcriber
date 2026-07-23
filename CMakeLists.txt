@@ -15,6 +15,11 @@ set(CMAKE_AUTORCC ON)
 
 add_executable(MyProject
     transcriber.cpp
+    globals.cpp
+    audioinput.cpp
+    fft.cpp
+    beatfinder.cpp
+    bpm.cpp
     mainwindow.cpp
     freqsender.cpp
 
