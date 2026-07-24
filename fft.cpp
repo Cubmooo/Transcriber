@@ -6,9 +6,22 @@ void FFT(){
     const int NUM_HARMONICS = 5;
     const float MIN_FREQ = 50.0f;
     const float MAX_FREQ = 2000.0f;
+    double rms = 0.0;
+    const double SILENCE_THRESHOLD = 0.002;
 
     while (true) {
         std::vector<float> localBuffer = sharedBuffer;
+        for (float sample : localBuffer)
+            rms += sample * sample;
+        rms = sqrt(rms / BUFFER_SIZE);
+
+        if (rms < SILENCE_THRESHOLD) {
+            std::unique_lock<std::mutex> lock(mtx);
+            sharedNote = 0;
+            noteHandOverReady = true;
+            cv.notify_one();
+            continue;
+        }
 
         int numBins = BUFFER_SIZE / 2 + 1;
         double* in = fftw_alloc_real(BUFFER_SIZE);

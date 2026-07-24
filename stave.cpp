@@ -18,6 +18,7 @@ StaveWidget::StaveWidget(QWidget *parent)
 void StaveWidget::setNote(int position)
 {
     noteWidget->setNote(position);
+    notePosition = position;
     update();
 }
 
@@ -30,6 +31,8 @@ void StaveWidget::resizeEvent(QResizeEvent *)
 
 void StaveWidget::paintEvent(QPaintEvent *)
 {
+    int clefYOffset;
+    QString clef;
     QPainter painter(this);
     painter.setFont(lelandFont);
 
@@ -42,8 +45,11 @@ void StaveWidget::paintEvent(QPaintEvent *)
             style.staffY + i * style.staffSpacing
         );
     }
+    
+    if (notePosition >= 48){clef = QString(SMuFL::trebleClef); clefYOffset = style.staffSpacing;}
+    else {clef = QString(SMuFL::bassClef); clefYOffset = - style.staffSpacing;}
 
     painter.drawText(
-        style.margin + style.preClefSpacing, style.staffY + style.staffSpacing, QString(SMuFL::trebleClef)
+        style.margin + style.preClefSpacing, style.staffY + clefYOffset, clef
     );
 }

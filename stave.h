@@ -22,4 +22,5 @@ private:
     QFont lelandFont;
     QFontMetrics lelandMetrics;
     StaveLayout style;
+    int notePosition = 0;
 };
