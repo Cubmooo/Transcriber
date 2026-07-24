@@ -6,10 +6,10 @@ void FFT(){
     const int NUM_HARMONICS = 5;
     const float MIN_FREQ = 50.0f;
     const float MAX_FREQ = 2000.0f;
-    double rms = 0.0;
     const double SILENCE_THRESHOLD = 0.002;
 
     while (true) {
+        double rms = 0.0;
         std::vector<float> localBuffer = sharedBuffer;
         for (float sample : localBuffer)
             rms += sample * sample;
@@ -27,8 +27,10 @@ void FFT(){
         double* in = fftw_alloc_real(BUFFER_SIZE);
         fftw_complex* out = fftw_alloc_complex(numBins);
 
-        for (int i = 0; i < BUFFER_SIZE; i++)
-            in[i] = static_cast<double>(localBuffer[i]);
+        for (int i = 0; i < BUFFER_SIZE; i++){
+            double w = 0.5 * (1 - cos(2 * PI * i / (BUFFER_SIZE - 1)));
+            in[i] = static_cast<double>(localBuffer[i] * w);
+        }
 
         fftw_plan plan = fftw_plan_dft_r2c_1d(BUFFER_SIZE, in, out, FFTW_ESTIMATE);
         fftw_execute(plan);
@@ -43,8 +45,11 @@ void FFT(){
         std::vector<double> hps(maxBin, 1.0);
         for (int i = minBin; i < maxBin; i++)
             for (int h = 1; h <= NUM_HARMONICS; h++)
-                if (i * h < numBins)
-                    hps[i] *= mag[i * h];
+                if (i * h < numBins){
+                    hps[i] = mag[i];
+                    for (int h = 2; h <= NUM_HARMONICS; h++)
+                        hps[i] += mag[i*h];
+                }
 
         int peakBin = minBin;
         for (int i = minBin + 1; i < maxBin; i++)
