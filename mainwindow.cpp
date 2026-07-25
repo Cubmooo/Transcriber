@@ -2,8 +2,10 @@
 #include "mainwindow.h"
 #include <QString>
 #include <QVBoxLayout>
+#include "globals.h"
 
 extern std::mutex mtx;
+extern std::mutex bpmMtx;
 extern std::vector<std::pair<int, int>> BPMTimeList;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -32,7 +34,7 @@ void MainWindow::updateFrequency(int note)
     return;
 }
 
-void MainWindow::updateStave(int note)
+void MainWindow::updateStave(std::vector<std::pair<int, int>> BPMTimeList)
 {
-    stave->setNote(note);
+stave->setNotes(BPMTimeList);
 }

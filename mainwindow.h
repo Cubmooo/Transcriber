@@ -15,7 +15,7 @@ public:
 
 public slots:
     void updateFrequency(int note);
-    void updateStave(int note);
+    void updateStave(std::vector<std::pair<int, int>> BPMTimeList);
 
 private:
     QLabel *label;

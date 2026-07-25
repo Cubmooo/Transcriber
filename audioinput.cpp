@@ -5,6 +5,7 @@
 #include <chrono>
 
 int fetchInput() {
+    std::cout << "fetchInputStart" << std::endl;
     Pa_Initialize();
 
     PaStream* stream;

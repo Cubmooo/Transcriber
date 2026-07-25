@@ -4,6 +4,7 @@
 #include <QFont>
 #include <QFontMetrics>
 #include "layout.h"
+#include <vector>
 
 class NoteWidget : public QWidget
 {
@@ -12,7 +13,7 @@ class NoteWidget : public QWidget
 public:
     explicit NoteWidget(QWidget *parent = nullptr);
 
-    void setNote(int staffPosition);
+    void setNotes(std::vector<std::pair<int, int>> BPMTimeList);
     void setStaveLayout(const StaveLayout& layout);
 
 protected:
@@ -22,5 +23,5 @@ private:
     StaveLayout style;
     QFont lelandFont;
     QFontMetrics lelandMetrics;
-    int notePosition = 0;
+    std::vector<std::pair<int, int>> BPMTimeList;
 };

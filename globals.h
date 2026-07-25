@@ -5,7 +5,7 @@
 #include <vector>
 
 #define SAMPLE_RATE 16000
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 8192
 
 const double PI = 3.14159265358979323846;
 

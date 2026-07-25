@@ -4,6 +4,8 @@
 #include <QFont>
 #include <QFontMetrics>
 #include "note.h"
+#include <vector>
+#include <utility>
 
 class StaveWidget : public QWidget
 {
@@ -11,7 +13,7 @@ class StaveWidget : public QWidget
 
 public:
     explicit StaveWidget(QWidget *parent = nullptr);
-    void setNote(int position);
+    void setNotes(std::vector<std::pair<int, int>> BPMTimeList);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

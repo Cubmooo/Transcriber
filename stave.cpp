@@ -15,10 +15,10 @@ StaveWidget::StaveWidget(QWidget *parent)
         noteWidget->raise();
     }
 
-void StaveWidget::setNote(int position)
+void StaveWidget::setNotes(std::vector<std::pair<int, int>> BPMTimeList)
 {
-    noteWidget->setNote(position);
-    notePosition = position;
+    noteWidget->setNotes(BPMTimeList);
+    notePosition = BPMTimeList.back().first;
     update();
 }
 
@@ -46,8 +46,10 @@ void StaveWidget::paintEvent(QPaintEvent *)
         );
     }
     
-    if (notePosition >= 48){clef = QString(SMuFL::trebleClef); clefYOffset = style.staffSpacing;}
-    else {clef = QString(SMuFL::bassClef); clefYOffset = - style.staffSpacing;}
+    /*if (notePosition >= 48){clef = QString(SMuFL::trebleClef); clefYOffset = style.staffSpacing;}
+    else {clef = QString(SMuFL::bassClef); clefYOffset = - style.staffSpacing;}*/
+    clef = QString(SMuFL::bassClef);
+    clefYOffset = - style.staffSpacing;
 
     painter.drawText(
         style.margin + style.preClefSpacing, style.staffY + clefYOffset, clef

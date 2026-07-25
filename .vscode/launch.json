@@ -15,7 +15,7 @@
                     "value": "C:\\vcpkg\\installed\\x64-windows\\bin;${env:PATH}"
                 }
             ],
-            "console": "integratedTerminal",
+            "console": "externalTerminal",
             "visualizerFile": "c:\\Users\\Joshua Davies\\AppData\\Roaming\\Code\\User\\workspaceStorage\\f0298b987df5531219d98c31bc2b303c\\tonka3000.qtvsctools\\qt.natvis.xml"
         }
     ]

@@ -26,11 +26,10 @@ void Sender::checkBPMTimeList()
         std::lock_guard<std::mutex> lock(bpmMtx);
         if(!bpmReady)
             return;
-
+        emit staveChangeNeeded(BPMTimeList);
         note = BPMTimeList.back().first;
         bpmReady = false;
     }
 
     emit newFreqRecived(note);
-    emit staveChangeNeeded(note);
 }
