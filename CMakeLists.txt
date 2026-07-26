@@ -29,6 +29,9 @@ add_executable(MyProject
 
 )
 
+target_compile_options(MyProject PRIVATE /fsanitize=address)
+target_link_options(MyProject PRIVATE /fsanitize=address)
+
 target_include_directories(MyProject PRIVATE
     ${CMAKE_SOURCE_DIR}/libs
 )

@@ -15,10 +15,10 @@ StaveWidget::StaveWidget(QWidget *parent)
         noteWidget->raise();
     }
 
-void StaveWidget::setNote(int position)
+void StaveWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
 {
-    noteWidget->setNote(position);
-    notePosition = position;
+    noteWidget->setNote(BPMTimeList);
+    notePosition = BPMTimeList.back().first;
     update();
 }
 

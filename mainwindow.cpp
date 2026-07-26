@@ -4,7 +4,7 @@
 #include <QVBoxLayout>
 
 extern std::mutex mtx;
-extern std::vector<std::pair<int, int>> BPMTimeList;
+extern std::vector<std::pair<int, double>> BPMTimeList;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -32,7 +32,7 @@ void MainWindow::updateFrequency(int note)
     return;
 }
 
-void MainWindow::updateStave(int note)
+void MainWindow::updateStave(std::vector<std::pair<int, double>> BPMTimeList)
 {
-    stave->setNote(note);
+    stave->setNote(BPMTimeList);
 }

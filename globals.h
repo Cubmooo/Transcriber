@@ -5,7 +5,7 @@
 #include <vector>
 
 #define SAMPLE_RATE 16000
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 8196
 
 const double PI = 3.14159265358979323846;
 
@@ -19,7 +19,7 @@ extern bool getBMPReady;
 extern bool bpmReady;
 extern std::vector<float> sharedBuffer;
 extern std::vector<std::pair<int, double>> sharedRealTimeList;
-extern std::vector<std::pair<int, int>> BPMTimeList;
+extern std::vector<std::pair<int, double>> BPMTimeList;
 extern const std::chrono::steady_clock::time_point START;
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 extern QString lelandFamily;

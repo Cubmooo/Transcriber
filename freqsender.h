@@ -15,7 +15,7 @@ public slots:
 
 signals:
     void newFreqRecived(int note);
-    void staveChangeNeeded(int note);
+    void staveChangeNeeded(std::vector<std::pair<int,double>> checkBPMTimeList);
 
 private:
     QTimer *timer;

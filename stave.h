@@ -11,7 +11,7 @@ class StaveWidget : public QWidget
 
 public:
     explicit StaveWidget(QWidget *parent = nullptr);
-    void setNote(int position);
+    void setNote(std::vector<std::pair<int, double>> BPMTimeList);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

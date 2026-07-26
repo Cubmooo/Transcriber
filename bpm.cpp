@@ -6,6 +6,7 @@ void magReggression(){
     double averageGap = 0.0;
     float previousBeatLength = 0.0;
     int beatLengthValue = 0;
+
     while(true){
         {
             std::unique_lock<std::mutex> lock(mtx);
@@ -13,32 +14,34 @@ void magReggression(){
             realTimeList = sharedRealTimeList;
             getBMPReady = false;
         }
-        int noPlayedNotes = sharedRealTimeList.size();
-        /*std::cout << noPlayedNotes << "\n" << std::flush;*/
+        int noPlayedNotes = realTimeList.size();
         if (noPlayedNotes == 1){
-            realTimeList.emplace_back(realTimeList.back().first, realTimeList.back().second);
             continue;
         }
-        averageGap = (realTimeList.back().second + (noPlayedNotes - 2) * averageGap) / (noPlayedNotes - 1);
-        float BPM = 1 / averageGap;
-        
-        beatLengthValue = - floor( log2 (BPM * 0.75 * realTimeList.back().second));
-        float beatLength = pow(2, beatLengthValue);
+        int windowSize = std::min(noPlayedNotes - 1, 8);
+        double sumGaps = 0.0;
+        for (int i = noPlayedNotes - windowSize; i < noPlayedNotes; ++i) {
+            sumGaps += realTimeList[i].second;
+        }
+        double averageGap = sumGaps / windowSize;
 
-        double time = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
+        /*if (averageGap <= 0.001) continue;
+        double estimatedBPM = 60.0 / averageGap;*/
+
+        double absoluteTime = 0.0;
+
+        float BPS = 1 / averageGap;
+        for(const auto& pair : realTimeList) {
+            absoluteTime += pair.second;
+        }
 
         std::lock_guard<std::mutex> lock(bpmMtx);
-        BPMTimeList.emplace_back(BPM, time);
         bpmReady = true;
-
         cvBPM.notify_one();
+        BPMTimeList.emplace_back(realTimeList.back().first, absoluteTime * BPS);
 
-        if (!BPMTimeList.empty()){
-            BPMTimeList.emplace_back(realTimeList.back().first, BPMTimeList.back().second + previousBeatLength);
-        }
-        else{BPMTimeList.emplace_back(realTimeList.back().first, previousBeatLength);}
-        previousBeatLength = beatLength;
+        std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
         /*std::cout << "beatLengthValue:" << beatLengthValue << "\n" <<std::flush;
         std::cout << "BPMlist: " <<BPMTimeList.back().first << "," << BPMTimeList.back().second << "\n" << std::flush;*/
     }
-}   
+}

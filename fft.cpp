@@ -7,6 +7,10 @@ void FFT(){
     const float MIN_FREQ = 50.0f;
     const float MAX_FREQ = 2000.0f;
     const double SILENCE_THRESHOLD = 0.002;
+    const int REQUIRED_STABLE_FRAMES = 1;
+    int previousNote = 0;
+    int candidateNote = 0;
+    int stableCount = 0;
 
     while (true) {
         double rms = 0.0;
@@ -62,13 +66,26 @@ void FFT(){
         fftw_destroy_plan(plan);
         fftw_free(in);
         fftw_free(out);
-
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            sharedNote = note;
-            noteHandOverReady = true;
+        
+        if(note == candidateNote){
+            stableCount++;
         }
-         cv.notify_one();
+        else{
+            candidateNote = note;
+            stableCount = 0;
+        }
 
+        if(stableCount >= REQUIRED_STABLE_FRAMES && note != previousNote){
+
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                sharedNote = note;
+                noteHandOverReady = true;
+            }
+
+            cv.notify_one();
+
+            previousNote = note;
+        }
     }
 }
