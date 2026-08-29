@@ -39,17 +39,146 @@ void magReggression()
                 BPMTimeList.emplace_back(realTimeList.back().first, beat);
             }
         }
+        std::cout << "bps: " << findBPS(noPlayedNotes, realTimeList) << std::endl;
         std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
     }
 }
 
-float findBPS(int noPlayedNotes, std::vector<std::pair<int, double>>& realTimeList){
-    int windowSize = std::min(noPlayedNotes - 1, 8);
-    double sumGaps = 0.0;
-    for (int i = noPlayedNotes - windowSize; i < noPlayedNotes; ++i){
-        sumGaps += realTimeList[i].second;
+float findBPS(int noPlayedNotes,
+              std::vector<std::pair<int, double>>& realTimeList)
+{
+    struct NoteGap
+    {
+        double gap;
+    };
+
+    std::vector<NoteGap> noteGaps;
+    double currentGap = 0.0;
+
+    int previousNote = realTimeList[0].first;
+
+    for (int i = 1; i < noPlayedNotes; ++i)
+    {
+        currentGap += realTimeList[i].second;
+
+        int currentNote = realTimeList[i].first;
+
+        if (currentNote != previousNote)
+        {
+            noteGaps.push_back({currentGap});
+
+            currentGap = 0.0;
+            previousNote = currentNote;
+        }
     }
-    double averageGap = sumGaps / windowSize;
-    float BPS = 1 / averageGap;
+
+    if (noteGaps.empty())
+        return 1.0f;
+
+    if (noteGaps.size() < 3)
+    {
+        double sum = 0.0;
+
+        for (const auto& gap : noteGaps)
+            sum += gap.gap;
+
+        double averageGap = sum / noteGaps.size();
+
+        if (averageGap <= 0.0)
+            return 1.0f;
+
+        return static_cast<float>(1.0 / averageGap);
+    }
+
+    int n = static_cast<int>(noteGaps.size());
+
+    int recentWindow = std::min(8, n);
+
+    double sumW  = 0.0;
+    double sumX  = 0.0;
+    double sumY  = 0.0;
+    double sumXX = 0.0;
+    double sumXY = 0.0;
+
+    for (int i = 0; i < n; ++i)
+    {
+        double x = static_cast<double>(i);
+        double y = noteGaps[i].gap;
+
+        int distanceFromNewest = n - 1 - i;
+
+        double weight;
+
+        if (distanceFromNewest < recentWindow)
+        {
+            weight = 1.0;
+        }
+        else
+        {
+            weight = std::pow(
+                0.5,
+                static_cast<double>(
+                    distanceFromNewest - recentWindow + 1
+                ) / 8.0
+            );
+        }
+
+        sumW  += weight;
+        sumX  += weight * x;
+        sumY  += weight * y;
+        sumXX += weight * x * x;
+        sumXY += weight * x * y;
+    }
+
+    double denominator =
+        sumW * sumXX - sumX * sumX;
+
+    if (std::abs(denominator) < 1e-10)
+    {
+        double sum = 0.0;
+
+        for (int i = std::max(0, n - recentWindow); i < n; ++i)
+            sum += noteGaps[i].gap;
+
+        double averageGap =
+            sum / std::min(n, recentWindow);
+
+        return static_cast<float>(1.0 / averageGap);
+    }
+
+    double slope =
+        (sumW * sumXY - sumX * sumY) /
+        denominator;
+
+    double intercept =
+        (sumY - slope * sumX) / sumW;
+
+    double x = static_cast<double>(n - 1);
+
+    double estimatedGap =
+        intercept + slope * x;
+
+
+    if (!std::isfinite(estimatedGap) ||
+        estimatedGap <= 0.0)
+    {
+        double sum = 0.0;
+
+        int count = std::min(n, recentWindow);
+
+        for (int i = n - count; i < n; ++i)
+            sum += noteGaps[i].gap;
+
+        estimatedGap = sum / count;
+    }
+
+    float BPS =
+        static_cast<float>(1.0 / estimatedGap);
+
+    while (BPS > 200.0f / 60.0f)
+    {
+        BPS /= 2.0f;
+    }
+
     return BPS;
 }

@@ -156,12 +156,6 @@ void NoteWidget::paintEvent(QPaintEvent *)
         }
         noteX = style.margin + style.fontSize * 1.5 * beat - notePanning;
         noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
-        std::cout << "beat, notePanning noteX" << beat << "  " << notePanning << "  "<< noteX << std::endl;
-
-        /*
-        noteX = style.margin + style.fontSize * 1.5 * (beat - style.screenBeatThreshold);
-        noteY = style.staffY - style.staffSpacing * distanceFromBase / 2 + style.systemSpacing;
-        */
 
         painter.drawText(
             noteX, noteY, crochet);
