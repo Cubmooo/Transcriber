@@ -11,6 +11,6 @@ StaveLayout DefineLayoutConstants(int height, int width, int fontSize)
     style.staffSpacing = fontSize/3;
     style.preClefSpacing = fontSize/5;
     style.systemSpacing = fontSize;
-    style.screenBeatThreshold = fontSize * 10;
+    style.screenBeatThreshold = fontSize * 17;
     return style;
 }

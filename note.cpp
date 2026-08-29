@@ -77,6 +77,40 @@ QChar findNoteGlyph(double noteLength, bool stemUp, bool isRest){
     return QChar();
 }
 
+double findNoteLength(int i, std::vector<std::pair<int, double>> notes)
+{
+    int notePosition = notes[i].first;
+    double noteLength = 1;
+
+    if (i >= 1)
+    {
+        if (notePosition == notes[i-1].first){return -1;}
+
+        for (int j = i + 1; j < notes.size(); j++)
+        {
+            if (notePosition == notes[j].first)
+                noteLength = notes[j].second - notes[i].second;
+            else
+                break;
+        }
+    }
+    return noteLength;
+}
+
+std::pair<int, int> findLedgerLines(int notePosition, int note, int octaves){
+    int ledgerDirection;
+    int distanceFromBase;
+    if (notePosition >= 48){
+    distanceFromBase = (note - 6) + (octaves - 4) * 7;
+    ledgerDirection = 1;
+    }
+    else if (notePosition != 0){
+        distanceFromBase = (note - 1) + (octaves - 3) * 7;
+        ledgerDirection = -1;
+    }
+    return {distanceFromBase, ledgerDirection};
+}
+
 void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -96,45 +130,9 @@ void NoteWidget::paintEvent(QPaintEvent *)
         int noteY;
         int noteX;
 
-        if (i >= 1){
-            if (notePosition == notes[i-1].first){continue;}
 
-            if (i != notes.size() - 1){
-                for(int j = i + 1; j < notes.size(); j++){
-                    if (notePosition == notes[j].first){
-                        noteLength = notes[j].second - beat;
-                    }
-                    else{break;}
-                }
-            }
-        } 
-        std::cout << "note length, note position, beat  " << noteLength << "  " << notePosition <<  "  " << beat << std::endl;
-
-
-
-
-        /*if (i >= 1) {
-            if (notePosition == notes[i-1].first){
-                int j = 1;
-                while (true){
-                    if (j <= i){
-                        if (notePosition != notes[i - j].first){
-                            noteLength = beat - notes[i - j].second;
-                            break;
-                        }
-                    }
-                    else{
-                        noteLength = beat;
-                    }
-                    j++;
-                }    
-            }
-
-            else{
-            noteLength = beat - notes[i - 1].second;
-            }
-        }*/
-
+        noteLength = findNoteLength(i, notes);
+        if (noteLength == -1){continue;}
         
         QString crochet;
         bool stemUp = false;
@@ -147,22 +145,18 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         QString accidental;
         auto [note, flatSharp] = findAccidental(semiTones);
-
-        if (notePosition >= 48){
-            distanceFromBase = (note - 6) + (octaves - 4) * 7;
-            ledgerDirection = 1;
-        }
-        else if (notePosition != 0){
-            distanceFromBase = (note - 1) + (octaves - 3) * 7;
-            ledgerDirection = -1;
-        }
+        std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note, octaves);
 
         double notePanning = 0.0;
         if (!notes.empty()){
-            notePanning = std::max(0.0,notes.back().second - style.screenBeatThreshold);
+            int maxNoteX = style.margin + style.fontSize * 1.5 * notes[notes.size() - 1].second;
+            if (maxNoteX > style.screenBeatThreshold){
+                notePanning = maxNoteX - style.screenBeatThreshold;
+            }
         }
-        noteX = style.margin + style.fontSize * 1.5 * (beat - notePanning);
+        noteX = style.margin + style.fontSize * 1.5 * beat - notePanning;
         noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
+        std::cout << "beat, notePanning noteX" << beat << "  " << notePanning << "  "<< noteX << std::endl;
 
         /*
         noteX = style.margin + style.fontSize * 1.5 * (beat - style.screenBeatThreshold);
