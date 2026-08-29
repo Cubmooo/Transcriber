@@ -1,5 +1,4 @@
 #include "globals.h"
-#include "bpm.h"
 
 int secondsToBeats()
 {
@@ -12,7 +11,6 @@ int secondsToBeats()
 
     while (true)
     {
-        //safely receive the pitch of the current note from fft.cpp 
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, []
@@ -24,18 +22,15 @@ int secondsToBeats()
         double currentTime = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
         double timeDelta = currentTime - lastTimeStamp;
 
-        //needed to avoid comparing to the previous note when previous note doesn't exist 
-        if (firstNote){
+        if (firstNote)
+        {
             realTimeList.emplace_back(note, 0.0);
             lastTimeStamp = currentTime;
             firstNote = false;
             continue;
         }
-
-        int noPlayedNotes = realTimeList.size();
-        beatLength = 1/findBPS(noPlayedNotes, realTimeList);
-
-        if ((note != previousNote) || (timeDelta >= beatLength)){
+        if (note != previousNote || timeDelta => beatLength)
+        {
             realTimeList.emplace_back(note, timeDelta);
             lastTimeStamp = currentTime;
             {
@@ -44,7 +39,7 @@ int secondsToBeats()
                 getBMPReady = true;
             }
             cvBPM.notify_one();
-            previousNote = note;
         }
+        previousNote = note;
     }
 }

@@ -9,7 +9,6 @@
 
 int main(int argc, char *argv[])
 {
-    
     // places each computational step and UI into separate threads to improve performance
     std::cout << "main";
     std::thread mic(fetchInput);

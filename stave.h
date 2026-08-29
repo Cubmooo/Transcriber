@@ -1,8 +1,6 @@
 #pragma once
 
-#include <QWidget>
-#include <QFont>
-#include <QFontMetrics>
+#include "pch/pch.h"
 #include "note.h"
 
 class StaveWidget : public QWidget

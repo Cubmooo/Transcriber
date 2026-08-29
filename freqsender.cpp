@@ -12,8 +12,7 @@ Sender::Sender()
         timer,
         &QTimer::timeout,
         this,
-        &Sender::checkBPMTimeList
-    );
+        &Sender::checkBPMTimeList);
 
     timer->start(50);
 }
@@ -21,7 +20,7 @@ Sender::Sender()
 void Sender::checkBPMTimeList()
 {
     int note;
-    std::vector<std::pair<int,double>> bpmCopy;
+    std::vector<std::pair<int, double>> bpmCopy;
 
     {
         std::lock_guard<std::mutex> lock(bpmMtx);

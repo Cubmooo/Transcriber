@@ -5,9 +5,6 @@ void magReggression()
 {
     std::vector<std::pair<int, double>> realTimeList;
     double beat = 0.0;
-    double previousNoteLength = 0;
-    BPMTimeList.emplace_back(0, 0.0);
-    int previousNote = -1;
 
     while (true)
     {
@@ -20,23 +17,18 @@ void magReggression()
         }
 
         int noPlayedNotes = realTimeList.size();
-        int currentNote = realTimeList.back().first;
         if (noPlayedNotes > 1){
-            if (currentNote == previousNote){beat += 1.0;}
-            else{
-                double noteLength = (realTimeList.back().second) * findBPS(noPlayedNotes, realTimeList);
-                previousNoteLength = noteLength;
-                beat +=  std::round(noteLength * 4.0) / 4.0;
-            }
+            beat +=  realTimeList.back().second * findBPS(noPlayedNotes, realTimeList);
         }
-        previousNote = currentNote;
-        
+        BPMTimeList.emplace_back(0, 0.0)
         {
             std::lock_guard<std::mutex> lock(bpmMtx);
             bpmReady = true;
             cvBPM.notify_one();
             if (!BPMTimeList.empty()){
-                BPMTimeList.emplace_back(realTimeList.back().first, beat);
+                if (BPMTimeList.back().first != realTimeList.back().first){
+                    BPMTimeList.emplace_back(realTimeList.back().first, beat);
+                }
             }
         }
         std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";

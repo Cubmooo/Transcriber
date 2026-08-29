@@ -15,8 +15,6 @@ StaveWidget::StaveWidget(QWidget *parent)
 
 void StaveWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
 {
-    if (BPMTimeList.empty())
-        return;
     noteWidget->setNote(BPMTimeList);
     notePosition = BPMTimeList.back().first;
     update();
@@ -36,30 +34,14 @@ void StaveWidget::paintEvent(QPaintEvent *)
     QPainter painter(this);
     painter.setFont(lelandFont);
 
-    for (int j = -2; j < 3; j++)
+    for (int i = -2; i < 3; i++)
     {
         painter.drawLine(
             style.margin,
-            style.staffY + j * style.staffSpacing,
+            style.staffY + i * style.staffSpacing,
             width() - style.margin,
-            style.staffY + j * style.staffSpacing);
+            style.staffY + i * style.staffSpacing);
     }
-
-
-    /*
-    for (int i = 0 i <= 2; i++){
-        for (int j = -2; j < 3; j++)
-        {
-            painter.drawLine(
-                style.margin,
-                style.staffY + j * style.staffSpacing + style.systemspacing * i,
-                width() - style.margin,
-                style.staffY + j * style.staffSpacing + style.systemspacing * i);
-        }
-    }
-    */
-
-
 
     if (notePosition >= 48)
     {

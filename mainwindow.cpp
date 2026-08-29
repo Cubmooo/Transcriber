@@ -1,7 +1,5 @@
 #include "pch/pch.h"
 #include "mainwindow.h"
-#include <QString>
-#include <QVBoxLayout>
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -16,6 +14,20 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(central);
 
     QVBoxLayout *layout = new QVBoxLayout(central);
+
+    auto *title = new QLabel("Transcriber");
+    title->setAlignment(Qt::AlignCenter);
+    title->setStyleSheet(
+        "background-color: #2596BE;"
+        "color: black;"
+    );
+
+    QFont titleFont;
+    titleFont.setPointSize(24);
+    titleFont.setBold(true);
+    title->setFont(titleFont);
+
+    layout->addWidget(title);
 
     stave = new StaveWidget(this);
     layout->addWidget(stave);

@@ -1,8 +1,5 @@
 #pragma once
-
-#include <mutex>
-#include <condition_variable>
-#include <vector>
+#include "pch/pch.h"
 
 #define SAMPLE_RATE 16000
 #define BUFFER_SIZE 8196

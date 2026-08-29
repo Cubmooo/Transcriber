@@ -1,10 +1,9 @@
+#include "pch/pch.h"
 #include "audioinput.h"
 #include "globals.h"
 
-#include <portaudio.h>
-#include <chrono>
-
 int fetchInput() {
+    // initialize with windows default microphone
     Pa_Initialize();
 
     PaStream* stream;
@@ -20,8 +19,7 @@ int fetchInput() {
 
     Pa_StartStream(stream);
 
-    static double prevEnergy = 0;
-
+    // constantly write microphone input into the shared buffer
     while (true) {
         Pa_ReadStream(stream, sharedBuffer.data(), BUFFER_SIZE);
 

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <QWidget>
-#include <QFont>
-#include <QFontMetrics>
+#include "pch/pch.h"
 #include "layout.h"
 
 class NoteWidget : public QWidget
@@ -13,7 +11,7 @@ public:
     explicit NoteWidget(QWidget *parent = nullptr);
 
     void setNote(std::vector<std::pair<int, double>> BPMTimeList);
-    void setStaveLayout(const StaveLayout& layout);
+    void setStaveLayout(const StaveLayout &layout);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -22,5 +20,5 @@ private:
     StaveLayout style;
     QFont lelandFont;
     QFontMetrics lelandMetrics;
-    std::vector<std::pair<int,double>> notes;
+    std::vector<std::pair<int, double>> notes;
 };

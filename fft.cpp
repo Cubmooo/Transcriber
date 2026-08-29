@@ -1,8 +1,9 @@
+#include "pch/pch.h"
 #include "fft.h"
 #include "globals.h"
-#include <fftw3.h>
 
-void FFT(){
+void FFT()
+{
     const int NUM_HARMONICS = 5;
     const float MIN_FREQ = 50.0f;
     const float MAX_FREQ = 2000.0f;
@@ -12,14 +13,21 @@ void FFT(){
     int candidateNote = 0;
     int stableCount = 0;
 
-    while (true) {
+    while (true)
+    {
+        /*calculate the  rms effectively "energy"
+        in this context it is used as a measure of volume
+        */
         double rms = 0.0;
         std::vector<float> localBuffer = sharedBuffer;
         for (float sample : localBuffer)
             rms += sample * sample;
         rms = sqrt(rms / BUFFER_SIZE);
 
-        if (rms < SILENCE_THRESHOLD) {
+        //if rms is to low it is likely a rest
+        //the pitch therefore doesn't have to be found
+        if (rms < SILENCE_THRESHOLD)
+        {
             std::unique_lock<std::mutex> lock(mtx);
             sharedNote = 0;
             noteHandOverReady = true;
@@ -27,11 +35,13 @@ void FFT(){
             continue;
         }
 
+        
         int numBins = BUFFER_SIZE / 2 + 1;
-        double* in = fftw_alloc_real(BUFFER_SIZE);
-        fftw_complex* out = fftw_alloc_complex(numBins);
+        double *in = fftw_alloc_real(BUFFER_SIZE);
+        fftw_complex *out = fftw_alloc_complex(numBins);
 
-        for (int i = 0; i < BUFFER_SIZE; i++){
+        for (int i = 0; i < BUFFER_SIZE; i++)
+        {
             double w = 0.5 * (1 - cos(2 * PI * i / (BUFFER_SIZE - 1)));
             in[i] = static_cast<double>(localBuffer[i] * w);
         }
@@ -41,7 +51,7 @@ void FFT(){
 
         std::vector<double> mag(numBins);
         for (int i = 0; i < numBins; i++)
-            mag[i] = sqrt(out[i][0]*out[i][0] + out[i][1]*out[i][1]);
+            mag[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
 
         int minBin = (int)(MIN_FREQ * BUFFER_SIZE / SAMPLE_RATE);
         int maxBin = std::min((int)(MAX_FREQ * BUFFER_SIZE / SAMPLE_RATE), numBins / NUM_HARMONICS);
@@ -49,15 +59,17 @@ void FFT(){
         std::vector<double> hps(maxBin, 1.0);
         for (int i = minBin; i < maxBin; i++)
             for (int h = 1; h <= NUM_HARMONICS; h++)
-                if (i * h < numBins){
+                if (i * h < numBins)
+                {
                     hps[i] = mag[i];
                     for (int h = 2; h <= NUM_HARMONICS; h++)
-                        hps[i] += mag[i*h];
+                        hps[i] += mag[i * h];
                 }
 
         int peakBin = minBin;
         for (int i = minBin + 1; i < maxBin; i++)
-            if (hps[i] > hps[peakBin]) peakBin = i;
+            if (hps[i] > hps[peakBin])
+                peakBin = i;
 
         double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
         /*std::cout << "frequency: " << freq << " Hz\n" << std::flush*/
@@ -66,17 +78,19 @@ void FFT(){
         fftw_destroy_plan(plan);
         fftw_free(in);
         fftw_free(out);
-        
-        if(note == candidateNote){
+
+        if (note == candidateNote)
+        {
             stableCount++;
         }
-        else{
+        else
+        {
             candidateNote = note;
             stableCount = 0;
         }
 
-        if(stableCount >= REQUIRED_STABLE_FRAMES && note != previousNote){
-
+        if (stableCount >= REQUIRED_STABLE_FRAMES)
+        {
             {
                 std::unique_lock<std::mutex> lock(mtx);
                 sharedNote = note;

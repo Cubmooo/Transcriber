@@ -1,17 +1,14 @@
 #pragma once
 
-#include <QMainWindow>
-#include <QLabel>
-
+#include "pch/pch.h"
 #include "stave.h"
-
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent=nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
 
 public slots:
     void updateFrequency(int note);

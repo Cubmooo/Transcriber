@@ -10,12 +10,12 @@ class Sender : public QObject
 public:
     Sender();
 
-public slots: 
+public slots:
     void checkBPMTimeList();
 
 signals:
     void newFreqRecived(int note);
-    void staveChangeNeeded(std::vector<std::pair<int,double>> checkBPMTimeList);
+    void staveChangeNeeded(std::vector<std::pair<int, double>> checkBPMTimeList);
 
 private:
     QTimer *timer;

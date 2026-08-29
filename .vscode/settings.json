@@ -1,3 +1,12 @@
 {
-    "explorer.sortOrder": "modified"
+    "explorer.sortOrder": "modified",
+    "explorer.fileNesting.patterns": {
+    "*.cpp": "${basename}.h, ${basename}.hpp, ${basename}.inl",
+    "*.cc": "${basename}.h, ${basename}.hpp, ${basename}.inl"
+},
+  "files.exclude": {
+    "*.exe": true,
+    "*.obj": true,
+    "*.pdb": true
+  }
 }
