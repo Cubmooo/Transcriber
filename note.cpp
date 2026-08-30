@@ -112,6 +112,18 @@ std::pair<int, int> findLedgerLines(int notePosition, int note, int octaves){
     return {distanceFromBase, ledgerDirection};
 }
 
+double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, int fontSize){
+    double noteSpacingDistance;
+    if (noteLength >= 1){noteSpacingDistance = noteLength;}
+        else{
+            noteSpacingDistance = sqrt(noteLength);
+            if (!isRest && flatSharp != 0){noteSpacingDistance += 0.3;}
+        }
+        noteSpacingDistance *= fontSize * 1.5;
+
+    return noteSpacingDistance;
+}
+
 void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -131,6 +143,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
         int ledgerDirection;
         int noteY;
         int noteX;
+        double noteSpacingDistance = 0;
 
 
         noteLength = findNoteLength(i, notes);
@@ -143,7 +156,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
         if (notePosition == 0){isRest = true;}
 
         int note;
-        int flatSharp;
+        int flatSharp = 0;
         crochet = findNoteGlyph(noteLength, stemUp, isRest);
         QString accidental;
         if (!isRest){
@@ -158,12 +171,13 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 notePanning = maxNoteX - style.screenBeatThreshold;
             }
         }
-        
-        cumulitiveNoteX += style.fontSize * 1.5 * noteLength;
+        noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
         noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
 
         painter.drawText(
             cumulitiveNoteX - notePanning, noteY, crochet);
+
+        cumulitiveNoteX += noteSpacingDistance;
 
         for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++)
         {
