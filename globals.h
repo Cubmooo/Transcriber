@@ -2,7 +2,7 @@
 #include "pch/pch.h"
 
 #define SAMPLE_RATE 16000
-#define BUFFER_SIZE 8196
+#define BUFFER_SIZE 4096
 
 const double PI = 3.14159265358979323846;
 

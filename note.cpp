@@ -82,16 +82,17 @@ double findNoteLength(int i, std::vector<std::pair<int, double>> notes)
     int notePosition = notes[i].first;
     double noteLength = 1;
 
-    if (i >= 1)
+
+    if (i > 0 && i < notes.size() - 1)
     {
         if (notePosition == notes[i-1].first){return -1;}
 
         for (int j = i + 1; j < notes.size(); j++)
         {
-            if (notePosition == notes[j].first)
+            if (notePosition != notes[j].first){
                 noteLength = notes[j].second - notes[i].second;
-            else
                 break;
+            }
         }
     }
     return noteLength;
@@ -102,11 +103,11 @@ std::pair<int, int> findLedgerLines(int notePosition, int note, int octaves){
     int distanceFromBase;
     if (notePosition >= 48){
     distanceFromBase = (note - 6) + (octaves - 4) * 7;
-    ledgerDirection = 1;
+    ledgerDirection = -1;
     }
     else if (notePosition != 0){
         distanceFromBase = (note - 1) + (octaves - 3) * 7;
-        ledgerDirection = -1;
+        ledgerDirection = 1;
     }
     return {distanceFromBase, ledgerDirection};
 }
@@ -115,6 +116,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.setFont(lelandFont);
+    double cumulitiveNoteX = style.margin;
 
     for (size_t i = 0; i < notes.size(); ++i)
     {
@@ -125,7 +127,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         int octaves = notePosition / 12;
         int semiTones = notePosition % 12;
-        int distanceFromBase;
+        int distanceFromBase = 0;
         int ledgerDirection;
         int noteY;
         int noteX;
@@ -140,12 +142,14 @@ void NoteWidget::paintEvent(QPaintEvent *)
         if(notePosition > 59){stemUp = true;}
         if (notePosition == 0){isRest = true;}
 
+        int note;
+        int flatSharp;
         crochet = findNoteGlyph(noteLength, stemUp, isRest);
-        if (isRest){continue;}
-
         QString accidental;
-        auto [note, flatSharp] = findAccidental(semiTones);
-        std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note, octaves);
+        if (!isRest){
+            std::tie(note, flatSharp) = findAccidental(semiTones);
+            std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note, octaves);
+        }
 
         double notePanning = 0.0;
         if (!notes.empty()){
@@ -154,30 +158,33 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 notePanning = maxNoteX - style.screenBeatThreshold;
             }
         }
-        noteX = style.margin + style.fontSize * 1.5 * beat - notePanning;
+        
+        cumulitiveNoteX += style.fontSize * 1.5 * noteLength;
         noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
 
         painter.drawText(
-            noteX, noteY, crochet);
+            cumulitiveNoteX - notePanning, noteY, crochet);
 
         for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++)
         {
             painter.drawLine(
-                noteX - style.fontSize / 4,
+                cumulitiveNoteX - style.fontSize / 4 - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection,
-                noteX + style.fontSize * 3 / 4,
+                cumulitiveNoteX + style.fontSize * 3 / 4  - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection);
         }
 
-        if (flatSharp == 1){
-            accidental = QString(SMuFL::sharp);
-        }
-        else if (flatSharp == -1){
-            accidental = QString(SMuFL::flat);
-        }
+        if (!isRest){
+            if (flatSharp == 1){
+                accidental = QString(SMuFL::sharp);
+            }
+            else if (flatSharp == -1){
+                accidental = QString(SMuFL::flat);
+            }
 
-        if (!accidental.isEmpty()){
-            painter.drawText(noteX - style.fontSize / 2, noteY, accidental);
+            if (!accidental.isEmpty()){
+                painter.drawText(cumulitiveNoteX - style.fontSize / 2 - notePanning, noteY, accidental);
+            }
         }
     }
 }
