@@ -11,11 +11,15 @@ NoteWidget::NoteWidget(QWidget *parent)
     lelandFont.setPointSize(100);
 }
 
+
+
 void NoteWidget::setStaveLayout(const StaveLayout &layout)
 {
     style = layout;
     update();
 }
+
+
 
 void NoteWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
 {
@@ -23,7 +27,10 @@ void NoteWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
     update();
 }
 
-std::pair<int, int> findAccidental(int semiTones){
+
+
+std::pair<int, int> findAccidental(int notePosition){
+    int semiTones = notePosition % 12;
     static const std::unordered_map<int, std::pair<int, int>> noteTable = {
         {0, {0, 0}},
         {1, {0, 1}},
@@ -45,7 +52,9 @@ std::pair<int, int> findAccidental(int semiTones){
     }
 }
 
-QChar findNoteGlyph(double noteLength, bool stemUp, bool isRest){
+
+
+QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
     struct NoteType
     {
         double minLength;
@@ -63,6 +72,10 @@ QChar findNoteGlyph(double noteLength, bool stemUp, bool isRest){
         { 0.0,   SMuFL::upStemSemiquaver, SMuFL::downStemSemiquaver, SMuFL::semiquaverRest }
     };
 
+    bool stemUp;
+    if(notePosition > 59){stemUp = true;}
+    else{stemUp = false;}
+        
     for (const auto& type : noteTypes)
     {
         if (noteLength >= type.minLength)
@@ -77,15 +90,38 @@ QChar findNoteGlyph(double noteLength, bool stemUp, bool isRest){
     return QChar();
 }
 
-double findNoteLength(int i, std::vector<std::pair<int, double>> notes)
+std::vector<double> findNoteLengthArray(double noteLength, double beat){
+    std::vector<double> noteLengthArray;
+    if (std::floor(beat) != beat){
+        double fractionalNoteLength = std::ceil(beat) - beat;
+        noteLengthArray.emplace_back(fractionalNoteLength);
+
+        noteLength -= fractionalNoteLength;
+    }
+
+    double validNoteLengths[] = {4, 3, 2, 1.5, 1, 0.75, 0.5, 0.25};
+
+    while (noteLength > 0){
+        for (double validNoteLength : validNoteLengths){
+            if (noteLength >= validNoteLength){
+                noteLengthArray.emplace_back(noteLength);
+                noteLength -= validNoteLength;
+            }
+        }
+    }
+    return noteLengthArray;
+}
+
+
+std::vector<double> findNoteLength(int i, std::vector<std::pair<int, double>> notes)
 {
     int notePosition = notes[i].first;
-    double noteLength = 1;
-
+    std::vector<double> noteLengthArray;
+    double noteLength = -1;
 
     if (i > 0 && i < notes.size() - 1)
     {
-        if (notePosition == notes[i-1].first){return -1;}
+        if (notePosition == notes[i-1].first){return {-1};}
 
         for (int j = i + 1; j < notes.size(); j++)
         {
@@ -93,14 +129,23 @@ double findNoteLength(int i, std::vector<std::pair<int, double>> notes)
                 noteLength = notes[j].second - notes[i].second;
                 break;
             }
+            if (j == notes.size() - 1){
+                noteLength = std::ceil(notes[j].second) - notes[i].second;
+            }
         }
     }
-    return noteLength;
+    if (noteLength == -1){
+        noteLength = 1.0 - (notes[i].first - std::floor(notes[i].first));
+    }
+    return findNoteLengthArray(noteLength, notes[i].second);
 }
 
-std::pair<int, int> findLedgerLines(int notePosition, int note, int octaves){
+
+
+std::pair<int, int> findLedgerLines(int notePosition, int note){
     int ledgerDirection;
     int distanceFromBase;
+    int octaves = notePosition / 12;
     if (notePosition >= 48){
     distanceFromBase = (note - 6) + (octaves - 4) * 7;
     ledgerDirection = -1;
@@ -111,6 +156,8 @@ std::pair<int, int> findLedgerLines(int notePosition, int note, int octaves){
     }
     return {distanceFromBase, ledgerDirection};
 }
+
+
 
 double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, int fontSize){
     double noteSpacingDistance;
@@ -124,45 +171,28 @@ double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, in
     return noteSpacingDistance;
 }
 
+
+
 void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.setFont(lelandFont);
-    double cumulitiveNoteX = style.margin;
+    double cumulativeNoteX = style.margin;
 
     for (size_t i = 0; i < notes.size(); ++i)
     {
-        const auto &noteData = notes[i];
-        int notePosition = noteData.first;
-        double beat = noteData.second;
-        double noteLength = 1;
-
-        int octaves = notePosition / 12;
-        int semiTones = notePosition % 12;
-        int distanceFromBase = 0;
-        int ledgerDirection;
-        int noteY;
-        int noteX;
-        double noteSpacingDistance = 0;
-
-
-        noteLength = findNoteLength(i, notes);
-        if (noteLength == -1){continue;}
-        
-        QString crochet;
-        bool stemUp = false;
-        bool isRest = false;
-        if(notePosition > 59){stemUp = true;}
-        if (notePosition == 0){isRest = true;}
-
-        int note;
-        int flatSharp = 0;
-        crochet = findNoteGlyph(noteLength, stemUp, isRest);
         QString accidental;
-        if (!isRest){
-            std::tie(note, flatSharp) = findAccidental(semiTones);
-            std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note, octaves);
+        int notePosition = notes[i].first;
+        int note, distanceFromBase = 0, ledgerDirection, flatSharp = 0;
+        bool isRest = (notePosition == 0);
+
+        if (!isRest) {
+            std::tie(note, flatSharp) = findAccidental(notePosition);
+            std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note);
         }
+
+        std::vector<double> noteLengthArray = findNoteLength(i, notes);
+        if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
 
         double notePanning = 0.0;
         if (!notes.empty()){
@@ -171,34 +201,48 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 notePanning = maxNoteX - style.screenBeatThreshold;
             }
         }
-        noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
-        noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
 
-        painter.drawText(
-            cumulitiveNoteX - notePanning, noteY, crochet);
+        bool firstTime = true;
+        double previousCumulativeNoteX = -1;
+        for (double noteLength : noteLengthArray){
 
-        cumulitiveNoteX += noteSpacingDistance;
+            QString crochet;
+            isRest = (notePosition == 0);
+            crochet = findNoteGlyph(noteLength, notePosition, isRest);
 
-        for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++)
-        {
+            double noteSpacingDistance = 0;
+            noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
+            int noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
+            painter.drawText(cumulativeNoteX - notePanning, noteY, crochet);
+            cumulativeNoteX += noteSpacingDistance;
+            
+            for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++){
             painter.drawLine(
-                cumulitiveNoteX - style.fontSize / 4 - notePanning,
+                cumulativeNoteX - style.fontSize / 4 - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection,
-                cumulitiveNoteX + style.fontSize * 3 / 4  - notePanning,
+                cumulativeNoteX + style.fontSize * 3 / 4  - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection);
-        }
-
-        if (!isRest){
-            if (flatSharp == 1){
-                accidental = QString(SMuFL::sharp);
-            }
-            else if (flatSharp == -1){
-                accidental = QString(SMuFL::flat);
             }
 
-            if (!accidental.isEmpty()){
-                painter.drawText(cumulitiveNoteX - style.fontSize / 2 - notePanning, noteY, accidental);
+            if (previousCumulativeNoteX != -1){
+                double tieLength = cumulativeNoteX - previousCumulativeNoteX;
+                //painter.drawText()
             }
+
+            if (!isRest && firstTime){
+                if (flatSharp == 1){
+                    accidental = QString(SMuFL::sharp);
+                }
+                else if (flatSharp == -1){
+                    accidental = QString(SMuFL::flat);
+                }
+
+                if (!accidental.isEmpty()){
+                    painter.drawText(cumulativeNoteX - style.fontSize / 2 - notePanning, noteY, accidental);
+                }
+            }
+            firstTime = false;
+            previousCumulativeNoteX = cumulativeNoteX;
         }
     }
 }
