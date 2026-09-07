@@ -172,18 +172,17 @@ double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, in
     return noteSpacingDistance;
 }
 
-void drawTie(QPainter &painter, double startX, double endX, double startY, double endY, double notePanning, double spatium, bool above)
+void drawTie(QPainter &painter, double startX, double endX, double startY, double endY, double notePanning, bool above, const StaveLayout &style)
 {
     double x1 = startX - notePanning;
     double x2 = endX   - notePanning;
 
-    // --- Engraving constants, in spatium units (matches typical MuseScore defaults) ---
-    const double endInset     = 0.20 * spatium; // pull endpoints in from the notehead edge
-    const double minShoulderH = 0.9  * spatium; // minimum arch height
-    const double maxShoulderH = 2.0  * spatium; // cap arch height for long ties
-    const double heightRatio  = 0.20;           // arch height as a fraction of tie length
-    const double midThickness = 0.18 * spatium; // thickness at the fattest point
-    const double baseGap      = 0.35 * spatium; // gap between notehead and tie
+    const double endInset     = style.endInset;
+    const double minShoulderH = style.minShoulderH;
+    const double maxShoulderH = style.maxShoulderH;
+    const double heightRatio  = style.heightRatio;           
+    const double midThickness = style.midThickness;
+    const double baseGap      = style.baseGap;
 
     x1 += endInset;
     x2 -= endInset;
@@ -192,7 +191,7 @@ void drawTie(QPainter &painter, double startX, double endX, double startY, doubl
         return;
 
     double shoulderH = qBound(minShoulderH, len * heightRatio, maxShoulderH);
-    double dir = above ? -1.0 : 1.0; // Qt's Y grows downward, so "above" is negative
+    double dir = above ? -1.0 : 1.0;
 
     double y1 = startY + dir * baseGap;
     double y2 = endY   + dir * baseGap;
@@ -204,11 +203,11 @@ void drawTie(QPainter &painter, double startX, double endX, double startY, doubl
 
     QPainterPath tie;
     tie.moveTo(x1, y1);
-    // outer edge, start -> shoulder -> end
+    
     tie.cubicTo(cx1, yShoulder - dir * half,
                 cx2, yShoulder - dir * half,
                 x2, y2);
-    // inner edge, end -> shoulder -> start (closes the taper back to a point)
+    
     tie.cubicTo(cx2, yShoulder + dir * half,
                 cx1, yShoulder + dir * half,
                 x1, y1);
@@ -272,7 +271,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             cumulativeNoteX += noteSpacingDistance;
 
             if (previousCumulativeNoteX != -1 && !isRest){
-                drawTie(painter, previousCumulativeNoteX, cumulativeNoteX, previousNoteY, noteY, notePanning, style.staffSpacing, !stemUp);
+                drawTie(painter, previousCumulativeNoteX, cumulativeNoteX, previousNoteY, noteY, notePanning, !stemUp, style);
             }
 
             for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++){
