@@ -50,6 +50,7 @@ std::pair<int, int> findAccidental(int notePosition){
     if (it != noteTable.end()){
         return {it->second.first, it->second.second};
     }
+    return {0, 0};
 }
 
 
@@ -171,11 +172,60 @@ double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, in
     return noteSpacingDistance;
 }
 
+void drawTie(QPainter &painter, double startX, double endX, double startY, double endY, double notePanning, double spatium, bool above)
+{
+    double x1 = startX - notePanning;
+    double x2 = endX   - notePanning;
+
+    // --- Engraving constants, in spatium units (matches typical MuseScore defaults) ---
+    const double endInset     = 0.20 * spatium; // pull endpoints in from the notehead edge
+    const double minShoulderH = 0.9  * spatium; // minimum arch height
+    const double maxShoulderH = 2.0  * spatium; // cap arch height for long ties
+    const double heightRatio  = 0.20;           // arch height as a fraction of tie length
+    const double midThickness = 0.18 * spatium; // thickness at the fattest point
+    const double baseGap      = 0.35 * spatium; // gap between notehead and tie
+
+    x1 += endInset;
+    x2 -= endInset;
+    double len = x2 - x1;
+    if (len <= 0.0)
+        return;
+
+    double shoulderH = qBound(minShoulderH, len * heightRatio, maxShoulderH);
+    double dir = above ? -1.0 : 1.0; // Qt's Y grows downward, so "above" is negative
+
+    double y1 = startY + dir * baseGap;
+    double y2 = endY   + dir * baseGap;
+    double yShoulder = ((y1 + y2) * 0.5) + dir * shoulderH;
+    double half = midThickness * 0.5;
+
+    double cx1 = x1 + len * 0.25;
+    double cx2 = x1 + len * 0.75;
+
+    QPainterPath tie;
+    tie.moveTo(x1, y1);
+    // outer edge, start -> shoulder -> end
+    tie.cubicTo(cx1, yShoulder - dir * half,
+                cx2, yShoulder - dir * half,
+                x2, y2);
+    // inner edge, end -> shoulder -> start (closes the taper back to a point)
+    tie.cubicTo(cx2, yShoulder + dir * half,
+                cx1, yShoulder + dir * half,
+                x1, y1);
+    tie.closeSubpath();
+
+    painter.save();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    painter.drawPath(tie);
+    painter.restore();
+}
 
 
 void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setFont(lelandFont);
     double cumulativeNoteX = style.margin;
 
@@ -191,6 +241,8 @@ void NoteWidget::paintEvent(QPaintEvent *)
             std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note);
         }
 
+        bool stemUp = (notePosition > 59);
+
         std::vector<double> noteLengthArray = findNoteLength(i, notes);
         if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
 
@@ -204,6 +256,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         bool firstTime = true;
         double previousCumulativeNoteX = -1;
+        double previousNoteY = -1;
         for (double noteLength : noteLengthArray){
 
             QString crochet;
@@ -213,20 +266,21 @@ void NoteWidget::paintEvent(QPaintEvent *)
             double noteSpacingDistance = 0;
             noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
             int noteY = style.staffY - style.staffSpacing * distanceFromBase / 2;
+
+            double noteHeadX = cumulativeNoteX;
             painter.drawText(cumulativeNoteX - notePanning, noteY, crochet);
             cumulativeNoteX += noteSpacingDistance;
-            
+
+            if (previousCumulativeNoteX != -1 && !isRest){
+                drawTie(painter, previousCumulativeNoteX, cumulativeNoteX, previousNoteY, noteY, notePanning, style.staffSpacing, !stemUp);
+            }
+
             for (int i = 0; i < std::abs(distanceFromBase) / 2 - 2; i++){
             painter.drawLine(
                 cumulativeNoteX - style.fontSize / 4 - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection,
                 cumulativeNoteX + style.fontSize * 3 / 4  - notePanning,
                 style.staffY + style.staffSpacing * (i + 3) * ledgerDirection);
-            }
-
-            if (previousCumulativeNoteX != -1){
-                double tieLength = cumulativeNoteX - previousCumulativeNoteX;
-                //painter.drawText()
             }
 
             if (!isRest && firstTime){
@@ -238,11 +292,13 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 }
 
                 if (!accidental.isEmpty()){
-                    painter.drawText(cumulativeNoteX - style.fontSize / 2 - notePanning, noteY, accidental);
+                    double accidentalWidth = painter.fontMetrics().horizontalAdvance(accidental);
+                    painter.drawText(noteHeadX - accidentalWidth - notePanning - style.fontSize * 0.15, noteY, accidental);
                 }
             }
             firstTime = false;
             previousCumulativeNoteX = cumulativeNoteX;
+            previousNoteY = noteY;
         }
     }
 }

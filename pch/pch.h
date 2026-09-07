@@ -20,6 +20,7 @@
 #include <QFontDatabase>
 #include <QWidget>
 #include <QPainter>
+#include <QPainterPath>
 #include <QFont>
 #include <QVBoxLayout>
 #include <QChar>
