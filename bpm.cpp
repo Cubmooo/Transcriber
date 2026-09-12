@@ -30,6 +30,22 @@ void magReggression()
             }
         }
         previousNote = currentNote;
+
+        if (BPMTimeList.size() > 10){
+            int subBeatPosList[4] = {0, 0, 0, 0};
+
+            for (const auto& [note, beat] : BPMTimeList) {
+                int index = static_cast<int>(std::round((beat - std::floor(beat)) * 4)) % 4;
+                subBeatPosList[index]++;
+            }
+
+            auto maxIt = std::max_element(subBeatPosList, subBeatPosList + 4);
+            if (*maxIt >= BPMTimeList.size() / 3){
+                for (auto& [note, beat] : BPMTimeList) {
+                    beat -= (maxIt - subBeatPosList) + 1;
+                }  
+            }
+        }
         
         {
             std::lock_guard<std::mutex> lock(bpmMtx);
