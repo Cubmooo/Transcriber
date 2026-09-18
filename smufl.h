@@ -7,6 +7,7 @@ namespace SMuFL
     inline const QChar bassClef(0xE062);
 
     inline const QChar semibreve(0xE0A2);
+    inline const QChar noteheadBlack(0xE0A4);
 
     inline const QChar upStemMinim(0xE1D3);
     inline const QChar downStemMinim(0xE1D4);

@@ -1,5 +1,6 @@
 #include "pch/pch.h"
 #include "mainwindow.h"
+#include "layout.h"
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -7,8 +8,9 @@ extern std::vector<std::pair<int, double>> BPMTimeList;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    showMaximized();
     setWindowTitle("Hello Qt");
+
+    //style = DefineLayoutConstants(height(), width(), 100);
 
     QWidget *central = new QWidget(this);
     setCentralWidget(central);
@@ -30,10 +32,13 @@ MainWindow::MainWindow(QWidget *parent)
     layout->addWidget(title);
 
     stave = new StaveWidget(this);
+    //stave->setMinimumHeight(style.staveWidgetHeight);
     layout->addWidget(stave);
 
     label = new QLabel("Hello World", central);
     layout->addWidget(label);
+
+    showMaximized();
 }
 
 void MainWindow::updateFrequency(int note)

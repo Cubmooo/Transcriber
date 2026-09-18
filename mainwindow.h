@@ -17,4 +17,5 @@ public slots:
 private:
     QLabel *label;
     StaveWidget *stave;
+    StaveLayout style;
 };

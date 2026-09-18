@@ -1,19 +1,26 @@
 #include "layout.h"
 
-StaveLayout DefineLayoutConstants(int height, int width, int fontSize)
+StaveLayout DefineLayoutConstants(int height, int width)
 {
     StaveLayout  style;
 
-    style.spatium = 35;
+    style.spatium = 25;
     int spatium = style.spatium;
 
     style.fontSize = spatium * 3;
     style.margin = spatium * 3;
-    style.staffY = height * 3/5;
-    style.staffSpacing = spatium;
+    style.staffY = height * 1/5;
     style.preClefSpacing = spatium * 3/5;
-    style.systemSpacing = spatium * 3;
+    style.systemSpacing = spatium * 8;
     style.screenBeatThreshold = width - spatium * 5;
+    style.staveWidgetHeight = style.systemSpacing * 3;
+    style.numberOfLines = 5;
+
+    style.lelandFontSize = spatium * 3;
+
+    style.stemLength = spatium * 3.5;
+    style.beamThickness = spatium * 0.5;
+    style.stemThickness = spatium * 0.12;
 
 
     // tie layout constants

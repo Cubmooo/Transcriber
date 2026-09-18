@@ -7,10 +7,17 @@ struct StaveLayout
     int fontSize;
     int margin;
     int staffY;
-    int staffSpacing;
     int preClefSpacing;
     int systemSpacing;
     int screenBeatThreshold;
+    int staveWidgetHeight;
+    int numberOfLines;
+
+    int lelandFontSize;
+
+    double stemLength;
+    double beamThickness;
+    double stemThickness;
 
     double endInset;
     double minShoulderH;
@@ -20,4 +27,4 @@ struct StaveLayout
     double baseGap;
 };
 
-StaveLayout DefineLayoutConstants(int width, int height, int fontSize);
+StaveLayout DefineLayoutConstants(int width, int height);
