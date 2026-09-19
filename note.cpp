@@ -66,10 +66,10 @@ QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
 
     static const NoteType noteTypes[] =
     {
-        { 3.0,   SMuFL::semibreve,        SMuFL::semibreve,         SMuFL::semibreveRest },
-        { 1.5,   SMuFL::upStemMinim,      SMuFL::downStemMinim,     SMuFL::minimRest },
-        { 0.75,  SMuFL::upStemCrochet,    SMuFL::downStemCrochet,   SMuFL::crochetRest },
-        { 0.375, SMuFL::upStemQuaver,     SMuFL::downStemQuaver,    SMuFL::quaverRest },
+        { 4.0,   SMuFL::semibreve,        SMuFL::semibreve,         SMuFL::semibreveRest },
+        { 2.0,   SMuFL::upStemMinim,      SMuFL::downStemMinim,     SMuFL::minimRest },
+        { 1.0,   SMuFL::upStemCrochet,    SMuFL::downStemCrochet,   SMuFL::crochetRest },
+        { 0.5,   SMuFL::upStemQuaver,     SMuFL::downStemQuaver,    SMuFL::quaverRest },
         { 0.0,   SMuFL::upStemSemiquaver, SMuFL::downStemSemiquaver, SMuFL::semiquaverRest }
     };
 
@@ -79,7 +79,7 @@ QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
         
     for (const auto& type : noteTypes)
     {
-        if (noteLength >= type.minLength)
+        if (noteLength >= type.minLength - 1e-6)
         {
             if (isRest)
                 return type.rest;
@@ -91,16 +91,46 @@ QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
     return QChar();
 }
 
-std::vector<double> findNoteLengthArray(double noteLength, double beat)
+
+
+bool isShortNote(double noteLength){
+    return noteLength < 0.5 - 1e-6;
+}
+
+
+
+bool isDottedLength(double noteLength){
+    static const double dottedLengths[] = {3.0, 1.5, 0.75, 0.375};
+    for (double d : dottedLengths){
+        if (std::abs(noteLength - d) < 1e-6) return true;
+    }
+    return false;
+}
+
+
+
+std::vector<double> findNoteLengthArray(double noteLength, double beat, bool isRest = false)
 {
     std::vector<double> noteLengthArray;
     double currentBeat = beat;
 
     if (std::floor(currentBeat) != currentBeat){
         double fractionalNoteLength = std::min(std::ceil(currentBeat) - currentBeat, noteLength);
+
+
+        if (isRest && isDottedLength(fractionalNoteLength)){
+            double firstPart = fractionalNoteLength / 3.0;
+            noteLengthArray.emplace_back(firstPart);
+            noteLength -= firstPart;
+            currentBeat += firstPart;
+            fractionalNoteLength -= firstPart;
+            std::cout << " fragment  " << firstPart;
+        }
+
         noteLengthArray.emplace_back(fractionalNoteLength);
         noteLength -= fractionalNoteLength;
         currentBeat += fractionalNoteLength;
+        std::cout << " fragment  " << fractionalNoteLength;
     }
 
     static const double validNoteLengths[] = {4, 3, 2, 1.5, 1, 0.75, 0.5, 0.25};
@@ -116,19 +146,24 @@ std::vector<double> findNoteLengthArray(double noteLength, double beat)
 
         double fragment = maxFragment;
         for (double validNoteLength : validNoteLengths){
+            if (isRest && isDottedLength(validNoteLength)) continue;
             if (maxFragment >= validNoteLength - epsilon){
                 fragment = validNoteLength;
                 break;
             }
         }
 
+        std::cout << " fragment  " << fragment;
         noteLengthArray.emplace_back(fragment);
         noteLength -= fragment;
         currentBeat += fragment;
+
     }
 
+    std::cout << "\n";
     return noteLengthArray;
 }
+
 
 
 std::vector<double> findNoteLength(int i, std::vector<std::pair<int, double>> notes)
@@ -155,7 +190,10 @@ std::vector<double> findNoteLength(int i, std::vector<std::pair<int, double>> no
     if (noteLength == -1){
         noteLength = 1.0 - (notes[i].second - std::floor(notes[i].second));
     }
-    return findNoteLengthArray(noteLength, notes[i].second);
+
+
+    std::cout << "  noteLength " << noteLength;
+    return findNoteLengthArray(noteLength, notes[i].second, notePosition == 0);   // CHANGED: pass isRest
 }
 
 
@@ -187,6 +225,22 @@ double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, in
 
     return noteSpacingDistance;
 }
+
+
+
+void drawAugmentationDot(QPainter &painter, double x, double y, bool onLine, const StaveLayout &style)
+{
+    const double radius = style.spatium * 0.2;
+    if (onLine) y -= style.spatium * 0.5;
+ 
+    painter.save();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    painter.drawEllipse(QPointF(x, y), radius, radius);
+    painter.restore();
+}
+
+
 
 void drawTie(QPainter &painter, double startX, double endX, double startY, double endY, double notePanning, bool above, const StaveLayout &style)
 {
@@ -236,6 +290,8 @@ void drawTie(QPainter &painter, double startX, double endX, double startY, doubl
     painter.restore();
 }
 
+
+
 void drawBarLine(QPainter &painter, double x, int line, const StaveLayout &style)
 {
     double y = style.staffY + line * style.systemSpacing;
@@ -247,7 +303,8 @@ void drawBarLine(QPainter &painter, double x, int line, const StaveLayout &style
 }
 
 
-void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, bool stemUp, const StaveLayout &style)
+
+void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, const std::vector<double> &lengths, bool stemUp, const StaveLayout &style)
 {
     if (noteHeads.size() < 2) return;
     const double dir = stemUp ? -1.0 : 1.0;
@@ -281,7 +338,32 @@ void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, boo
     painter.setBrush(Qt::black);
     painter.drawRect(beamRect);
     painter.restore();
+
+
+    const double beam2Y = beamY - dir * style.beamThickness * 1.5;
+    const double stubLength = style.spatium;
+ 
+    painter.save();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    for (size_t k = 0; k < noteHeads.size(); ++k){
+        if (!isShortNote(lengths[k])) continue;
+ 
+        double xa = noteHeads[k].x();
+        if (k + 1 < noteHeads.size() && isShortNote(lengths[k + 1])){
+            // two neighbouring semiquavers: full second beam between them
+            double xb = noteHeads[k + 1].x();
+            painter.drawRect(QRectF(xa, beam2Y - style.beamThickness / 2.0, xb - xa, style.beamThickness));
+        }
+        else if (k == 0 || !isShortNote(lengths[k - 1])){
+            double xLeft = (k == 0) ? xa : xa - stubLength;
+            painter.drawRect(QRectF(xLeft, beam2Y - style.beamThickness / 2.0, stubLength, style.beamThickness));
+        }
+    }
+    painter.restore();
 }
+
+
 
 int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLayout &style)
 {
@@ -293,6 +375,7 @@ int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLay
         else{return lastFragmentLine - style.numberOfLines + 1;}
     }
 }
+
 
 
 void NoteWidget::paintEvent(QPaintEvent *)
@@ -309,7 +392,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
     int line = 0;
     double spacingNoteX = style.margin;
 
-    struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; };
+    struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; };
     std::vector<PendingBeamNote> pendingBeam;
     int pendingHalfBar = -1, pendingLine = -1;
     bool pendingStemUp = false;
@@ -318,11 +401,13 @@ void NoteWidget::paintEvent(QPaintEvent *)
     {
         if (pendingBeam.size() >= 2){
             std::vector<QPointF> pts;
+            std::vector<double> lengths;
             for (auto &pn : pendingBeam){
                 painter.drawText(pn.x, pn.y, QString(SMuFL::noteheadBlack));
                 pts.emplace_back(pn.x, pn.y);
+                lengths.push_back(pn.noteLength);
             }
-            drawBeamGroup(painter, pts, pendingStemUp, style);
+            drawBeamGroup(painter, pts, lengths, pendingStemUp, style);
         } else if (pendingBeam.size() == 1){
             auto &pn = pendingBeam[0];
             painter.drawText(pn.x, pn.y, QString(findNoteGlyph(pn.noteLength, pn.notePosition, pn.isRest)));
@@ -344,6 +429,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         bool stemUp = (notePosition > 59);
 
+        std::cout << "beat" << notes[i].second;
         std::vector<double> noteLengthArray = findNoteLength(i, notes);
         if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
 
@@ -380,22 +466,46 @@ void NoteWidget::paintEvent(QPaintEvent *)
             int noteY = style.staffY - style.spatium * distanceFromBase / 2 + displayedLine * style.systemSpacing;
             double noteHeadX = spacingNoteX;
 
-            bool beamable = !isRest && noteLength < 0.75 - 1e-6;
+            bool beamable = !isRest && noteLength < 1 - 1e-6;
             int halfBar = static_cast<int>(std::floor(currentBeat / 2.0 + 1e-6));
+            int beat    = static_cast<int>(std::floor(currentBeat + 1e-6));
+            PendingBeamNote current{spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest, beat}; 
 
             if (beamable && !pendingBeam.empty() && halfBar == pendingHalfBar
                 && line == pendingLine && pendingBeam.size() < 4){
-                pendingBeam.push_back({spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest});
-            } else {
+                
+                bool hasShort = isShortNote(noteLength) ||
+                    std::any_of(pendingBeam.begin(), pendingBeam.end(), [](const PendingBeamNote &p){ return isShortNote(p.noteLength); });
+ 
+                if (hasShort && beat != pendingBeam.front().beat){
+                    std::vector<PendingBeamNote> earlier, carry;
+                    for (auto &pn : pendingBeam)
+                        (pn.beat == beat ? carry : earlier).push_back(pn);
+ 
+                    pendingBeam = earlier;
+                    flushBeam();
+                    pendingBeam = carry;
+                    pendingStemUp = pendingBeam.empty() ? stemUp : (pendingBeam.front().notePosition > 59);
+                }
+                pendingBeam.push_back(current);
+            }
+
+            else {
                 flushBeam();
                 if (beamable){
-                    pendingBeam.push_back({spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest});
+                    pendingBeam.push_back(current);
                     pendingHalfBar = halfBar;
                     pendingLine = line;
                     pendingStemUp = stemUp;
                 } else {
                     painter.drawText(spacingNoteX - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
                 }
+            }
+
+            if (!isRest && isDottedLength(noteLength)){
+                QString headGlyph = QString(SMuFL::noteheadBlack);
+                double dotX = noteHeadX - notePanning + painter.fontMetrics().horizontalAdvance(headGlyph) + style.spatium * 0.4;
+                drawAugmentationDot(painter, dotX, noteY, distanceFromBase % 2 == 0, style);
             }
 
             currentBeat += noteLength;
