@@ -13,10 +13,13 @@ StaveLayout DefineLayoutConstants(int height, int width)
     style.preClefSpacing = spatium * 3/5;
     style.systemSpacing = spatium * 8;
     style.screenBeatThreshold = width - spatium * 5;
-    style.numberOfLines = 5;
+    style.numberOfLines = 3;
     style.staveWidgetHeight = style.systemSpacing * style.numberOfLines + spatium * 3;
 
     style.lelandFontSize = spatium * 3;
+
+    style.noteGap = spatium * 0.5;
+    style.barGap = spatium * 1;
 
     style.stemLength = spatium * 2.5;
     style.beamThickness = spatium * 0.5;
@@ -24,11 +27,11 @@ StaveLayout DefineLayoutConstants(int height, int width)
 
 
     // tie layout constants
-    style.endInset     = 0.20 * spatium; // pull endpoints in from the notehead edge
-    style.minShoulderH = 0.9  * spatium; // minimum arch height
-    style.maxShoulderH = 2.0  * spatium; // cap arch height for long ties
-    style.heightRatio  = 0.20;           // arch height as a fraction of tie length
-    style.midThickness = 0.18 * spatium; // thickness at the fattest point
-    style.baseGap      = 0.35 * spatium; // gap between notehead and tie
+    style.endInset = spatium * 0;  // pull endpoints in from the notehead edge
+    style.minShoulderH = spatium * 0.9; // minimum arch height
+    style.maxShoulderH = spatium * 2.0; // cap arch height for long ties
+    style.heightRatio = 0.20;           // arch height as a fraction of tie length
+    style.midThickness = spatium * 0.18; // thickness at the fattest point
+    style.baseGap = spatium * 0.35; // gap between notehead and tie
     return style;
 }

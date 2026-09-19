@@ -19,6 +19,9 @@ struct StaveLayout
     double beamThickness;
     double stemThickness;
 
+    double noteGap;
+    double barGap;
+
     double endInset;
     double minShoulderH;
     double maxShoulderH;

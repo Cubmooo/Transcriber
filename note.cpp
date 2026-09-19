@@ -192,8 +192,7 @@ std::vector<double> findNoteLength(int i, std::vector<std::pair<int, double>> no
     }
 
 
-    std::cout << "  noteLength " << noteLength;
-    return findNoteLengthArray(noteLength, notes[i].second, notePosition == 0);   // CHANGED: pass isRest
+    return findNoteLengthArray(noteLength, notes[i].second, notePosition == 0);
 }
 
 
@@ -244,43 +243,33 @@ void drawAugmentationDot(QPainter &painter, double x, double y, bool onLine, con
 
 void drawTie(QPainter &painter, double startX, double endX, double startY, double endY, double notePanning, bool above, const StaveLayout &style)
 {
-    double x1 = startX - notePanning;
-    double x2 = endX   - notePanning;
+    startX += (style.endInset - notePanning);
+    endX -= (style.endInset + notePanning);
 
-    const double endInset     = style.endInset;
-    const double minShoulderH = style.minShoulderH;
-    const double maxShoulderH = style.maxShoulderH;
-    const double heightRatio  = style.heightRatio;           
-    const double midThickness = style.midThickness;
-    const double baseGap      = style.baseGap;
-
-    x1 += endInset;
-    x2 -= endInset;
-    double len = x2 - x1;
-    if (len <= 0.0)
+    double length = endX - startX;
+    if (length <= 0.0)
         return;
 
-    double shoulderH = qBound(minShoulderH, len * heightRatio, maxShoulderH);
-    double dir = above ? -1.0 : 1.0;
+    double shoulderH = qBound(style.minShoulderH, length * style.heightRatio, style.maxShoulderH);
+    double direction = above ? -1.0 : 1.0;
 
-    double y1 = startY + dir * baseGap;
-    double y2 = endY   + dir * baseGap;
-    double yShoulder = ((y1 + y2) * 0.5) + dir * shoulderH;
-    double half = midThickness * 0.5;
+    startY += direction * style.baseGap;
+    endY += direction * style.baseGap;
+    double yShoulder = ((startY + endY) * 0.5) + direction * shoulderH;
 
-    double cx1 = x1 + len * 0.25;
-    double cx2 = x1 + len * 0.75;
+    double cx1 = startX + length * 0.25;
+    double cx2 = startX + length * 0.75;
 
     QPainterPath tie;
-    tie.moveTo(x1, y1);
+    tie.moveTo(startX, startY);
     
-    tie.cubicTo(cx1, yShoulder - dir * half,
-                cx2, yShoulder - dir * half,
-                x2, y2);
+    tie.cubicTo(cx1, yShoulder - direction * style.midThickness * 0.5,
+                cx2, yShoulder - direction * style.midThickness * 0.5,
+                endX, endY);
     
-    tie.cubicTo(cx2, yShoulder + dir * half,
-                cx1, yShoulder + dir * half,
-                x1, y1);
+    tie.cubicTo(cx2, yShoulder + direction * style.midThickness * 0.5,
+                cx1, yShoulder + direction * style.midThickness * 0.5,
+                startX, startY);
     tie.closeSubpath();
 
     painter.save();
@@ -384,6 +373,8 @@ void NoteWidget::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setFont(lelandFont);
 
+    const double headWidth = painter.fontMetrics().horizontalAdvance(QString(SMuFL::noteheadBlack));
+
     static double lastFragmentX = 0;
     static int lastFragmentLine = 1;
     int lineOffset = computeLineOffset(lastFragmentX, lastFragmentLine, style);
@@ -391,6 +382,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
     double cumulativeNoteX = style.margin;
     int line = 0;
     double spacingNoteX = style.margin;
+    bool afterBarLine = false;
 
     struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; };
     std::vector<PendingBeamNote> pendingBeam;
@@ -429,7 +421,6 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         bool stemUp = (notePosition > 59);
 
-        std::cout << "beat" << notes[i].second;
         std::vector<double> noteLengthArray = findNoteLength(i, notes);
         if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
 
@@ -438,9 +429,12 @@ void NoteWidget::paintEvent(QPaintEvent *)
         double notePanning = 0.0;
 
         bool firstTime = true;
-        double previousSpacingNoteX = -1;
+        double previousSpacingNoteX = -1; 
         double previousNoteY = -1;
+        int previousDisplayedLine = 0;
         for (double noteLength : noteLengthArray){
+
+            const double slotStart = cumulativeNoteX;
 
             bool isFirstInBar = std::fmod(std::fmod(currentBeat, 4.0) + 4.0, 4.0) < 1e-6;
 
@@ -454,6 +448,20 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 cumulativeNoteX += style.fontSize * 0.3;
                 line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
                 spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
+            }
+
+            {
+                double leftReach = 0.0;
+                if (!isRest && firstTime && flatSharp != 0){
+                    QString accidentalGlyph = QString(flatSharp == 1 ? SMuFL::sharp : SMuFL::flat);
+                    leftReach = painter.fontMetrics().horizontalAdvance(accidentalGlyph) + style.fontSize * 0.15;
+                }
+                double minHeadX = slotStart + leftReach + (afterBarLine ? style.barGap - style.spatium * 0.4 : 0.0);
+                if (cumulativeNoteX < minHeadX){
+                    cumulativeNoteX = minHeadX;
+                    line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
+                    spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
+                }
             }
 
             int displayedLine = line - lineOffset;
@@ -508,15 +516,32 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 drawAugmentationDot(painter, dotX, noteY, distanceFromBase % 2 == 0, style);
             }
 
+            if (!isRest && !firstTime){
+                bool above = !stemUp;
+                if (displayedLine == previousDisplayedLine){
+                    drawTie(painter, previousSpacingNoteX, noteHeadX, previousNoteY, noteY, notePanning, above, style);
+                } else {
+                    drawTie(painter, previousSpacingNoteX, style.screenBeatThreshold, previousNoteY, previousNoteY, notePanning, above, style);
+                    drawTie(painter, 0.0, noteHeadX, noteY, noteY, notePanning, above, style);
+                }
+            }
+
             currentBeat += noteLength;
 
             double beatMod = std::fmod(std::fmod(currentBeat, 4.0) + 4.0, 4.0);
             bool isBarLine = (beatMod < 0.001 || beatMod > 3.999);
 
-            double newCumulativeNoteX = cumulativeNoteX + noteSpacingDistance;
+            QString extentGlyph = QString(findNoteGlyph(noteLength, notePosition, isRest));
+            double noteExtent = std::max<double>(painter.fontMetrics().horizontalAdvance(extentGlyph),
+                                                 painter.fontMetrics().boundingRect(extentGlyph).right());
+            if (!isRest && isDottedLength(noteLength)) noteExtent = std::max(noteExtent, headWidth + style.spatium * 0.6);
+            double minSlot = noteExtent + (isBarLine ? style.barGap + style.spatium * 0.4 : style.noteGap);
+
+            double newCumulativeNoteX = cumulativeNoteX + std::max(noteSpacingDistance, minSlot);
             int newLine = std::floor(newCumulativeNoteX / style.screenBeatThreshold);
             double barLineX = newCumulativeNoteX - line * style.screenBeatThreshold;
             if (isBarLine){drawBarLine(painter, barLineX - notePanning, displayedLine, style);}
+            afterBarLine = isBarLine; 
 
             cumulativeNoteX = newCumulativeNoteX;
             line = newLine;
@@ -524,9 +549,9 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
             for (int j = 0; j < std::abs(distanceFromBase) / 2 - 2; j++){
             painter.drawLine(
-                spacingNoteX - style.fontSize / 4 - notePanning,
+                noteHeadX - style.fontSize / 4 - notePanning,
                 style.staffY + style.spatium * (j + 3) * ledgerDirection + displayedLine * style.systemSpacing,
-                spacingNoteX + style.fontSize * 3 / 4  - notePanning,
+                noteHeadX + style.fontSize * 3 / 4  - notePanning,
                 style.staffY + style.spatium * (j + 3) * ledgerDirection + displayedLine * style.systemSpacing);
             }
 
@@ -544,8 +569,9 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 }
             }
             firstTime = false;
-            previousSpacingNoteX = spacingNoteX;
+            previousSpacingNoteX = noteHeadX + headWidth + (isDottedLength(noteLength) ? style.spatium * 0.6 : 0.0);
             previousNoteY = noteY;
+            previousDisplayedLine = displayedLine;
         }
     }
     flushBeam();

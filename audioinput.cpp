@@ -8,7 +8,7 @@ int fetchInput() {
 
     std::vector<float> localCapture(BUFFER_SIZE);
     const int WINDOW_SIZE = BUFFER_SIZE;
-    const int HOP_SIZE = BUFFER_SIZE / 2;
+    const int HOP_SIZE = BUFFER_SIZE / 4;
     std::vector<float> window(WINDOW_SIZE, 0.0f);
 
     PaStream* stream;
