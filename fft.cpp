@@ -9,6 +9,8 @@ void FFT()
     const float MAX_FREQ = 2000.0f;
     const double SILENCE_THRESHOLD = 0.002;
     const int REQUIRED_STABLE_FRAMES = 1;
+    const int ZERO_PAD_FACTOR = 4;
+    const int FFT_SIZE = BUFFER_SIZE * ZERO_PAD_FACTOR;
     int previousNote = 0;
     int candidateNote = 0;
     int stableCount = 0;
@@ -42,42 +44,67 @@ void FFT()
         }
 
         
-        int numBins = BUFFER_SIZE / 2 + 1;
-        double *in = fftw_alloc_real(BUFFER_SIZE);
+        int numBins = FFT_SIZE / 2 + 1;
+        double *in = fftw_alloc_real(FFT_SIZE);
         fftw_complex *out = fftw_alloc_complex(numBins);
 
+        std::fill(in, in + FFT_SIZE, 0.0);
         for (int i = 0; i < BUFFER_SIZE; i++)
         {
             double w = 0.5 * (1 - cos(2 * PI * i / (BUFFER_SIZE - 1)));
             in[i] = static_cast<double>(localBuffer[i] * w);
         }
 
-        fftw_plan plan = fftw_plan_dft_r2c_1d(BUFFER_SIZE, in, out, FFTW_ESTIMATE);
+        fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, in, out, FFTW_ESTIMATE);
         fftw_execute(plan);
 
         std::vector<double> mag(numBins);
         for (int i = 0; i < numBins; i++)
             mag[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
 
-        int minBin = (int)(MIN_FREQ * BUFFER_SIZE / SAMPLE_RATE);
-        int maxBin = std::min((int)(MAX_FREQ * BUFFER_SIZE / SAMPLE_RATE), numBins / NUM_HARMONICS);
+        int minBin = (int)(MIN_FREQ * FFT_SIZE / SAMPLE_RATE);
+        int maxBin = std::min((int)(MAX_FREQ * FFT_SIZE / SAMPLE_RATE), numBins / NUM_HARMONICS);
 
-        std::vector<double> hps(maxBin, 1.0);
+        std::vector<double> hps(maxBin, 0.0);
         for (int i = minBin; i < maxBin; i++)
-            for (int h = 1; h <= NUM_HARMONICS; h++)
-                if (i * h < numBins)
-                {
-                    hps[i] = mag[i];
-                    for (int h = 2; h <= NUM_HARMONICS; h++)
-                        hps[i] += mag[i * h];
-                }
+        {
+            double product = mag[i];
+            for (int h = 2; h <= NUM_HARMONICS; h++)
+            {
+                int idx = i * h;
+                if (idx < numBins)
+                    product *= mag[idx];
+                else
+                    product *= 1e-9;
+            }
+            hps[i] = product;
+        }
 
         int peakBin = minBin;
         for (int i = minBin + 1; i < maxBin; i++)
             if (hps[i] > hps[peakBin])
                 peakBin = i;
 
-        double freq = (double)peakBin * SAMPLE_RATE / BUFFER_SIZE;
+        int halfBin = peakBin / 2;
+        if (halfBin >= minBin && hps[halfBin] > 0.0 && hps[peakBin] > 0.0)
+        {
+            const double OCTAVE_BIAS = 0.4;
+            if (hps[halfBin] >= hps[peakBin] * OCTAVE_BIAS)
+                peakBin = halfBin;
+        }
+
+        double interpolatedBin = (double)peakBin;
+        if (peakBin > minBin && peakBin < maxBin - 1)
+        {
+            double alpha = hps[peakBin - 1];
+            double beta  = hps[peakBin];
+            double gamma = hps[peakBin + 1];
+            double denom = (alpha - 2.0 * beta + gamma);
+            if (std::abs(denom) > 1e-12)
+                interpolatedBin += 0.5 * (alpha - gamma) / denom;
+        }
+
+        double freq = interpolatedBin * SAMPLE_RATE / FFT_SIZE;
         int note = std::round(57 + 12 * std::log2(freq / 440.0));
 
         fftw_destroy_plan(plan);

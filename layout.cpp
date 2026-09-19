@@ -14,7 +14,7 @@ StaveLayout DefineLayoutConstants(int height, int width)
     style.systemSpacing = spatium * 8;
     style.screenBeatThreshold = width - spatium * 5;
     style.staveWidgetHeight = style.systemSpacing * 3;
-    style.numberOfLines = 5;
+    style.numberOfLines = 3;
 
     style.lelandFontSize = spatium * 3;
 

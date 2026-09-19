@@ -283,12 +283,28 @@ void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, boo
     painter.restore();
 }
 
+int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLayout &style)
+{
+    if (lastFragmentLine < style.numberOfLines){return 0;}
+    else{
+        if (lastFragmentX > style.screenBeatThreshold * 0.8){
+            return lastFragmentLine - style.numberOfLines + 2;
+        }
+        else{return lastFragmentLine - style.numberOfLines + 1;}
+    }
+}
+
 
 void NoteWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setFont(lelandFont);
+
+    static double lastFragmentX = 0;
+    static int lastFragmentLine = 1;
+    int lineOffset = computeLineOffset(lastFragmentX, lastFragmentLine, style);
+
     double cumulativeNoteX = style.margin;
     int line = 0;
     double spacingNoteX = style.margin;
@@ -334,12 +350,6 @@ void NoteWidget::paintEvent(QPaintEvent *)
         double currentBeat = notes[i].second;
 
         double notePanning = 0.0;
-        /*if (!notes.empty()){
-            int maxNoteX = style.margin + style.fontSize * 1.5 * notes[notes.size() - 1].second;
-            if (maxNoteX > style.screenBeatThreshold){
-                notePanning = maxNoteX - style.screenBeatThreshold;
-            }
-        }*/
 
         bool firstTime = true;
         double previousSpacingNoteX = -1;
@@ -360,9 +370,14 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
             }
 
+            int displayedLine = line - lineOffset;
+
+            lastFragmentX = spacingNoteX;
+            lastFragmentLine = line;
+
             isRest = (notePosition == 0);
             double noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
-            int noteY = style.staffY - style.spatium * distanceFromBase / 2 + line * style.systemSpacing;
+            int noteY = style.staffY - style.spatium * distanceFromBase / 2 + displayedLine * style.systemSpacing;
             double noteHeadX = spacingNoteX;
 
             bool beamable = !isRest && noteLength < 0.75 - 1e-6;
@@ -389,18 +404,20 @@ void NoteWidget::paintEvent(QPaintEvent *)
             bool isBarLine = (beatMod < 0.001 || beatMod > 3.999);
 
             double newCumulativeNoteX = cumulativeNoteX + noteSpacingDistance;
+            int newLine = std::floor(newCumulativeNoteX / style.screenBeatThreshold);
             double barLineX = newCumulativeNoteX - line * style.screenBeatThreshold;
-            if (isBarLine){drawBarLine(painter, barLineX - notePanning, line, style);}
+            if (isBarLine){drawBarLine(painter, barLineX - notePanning, displayedLine, style);}
 
             cumulativeNoteX = newCumulativeNoteX;
+            line = newLine;
             spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
 
             for (int j = 0; j < std::abs(distanceFromBase) / 2 - 2; j++){
             painter.drawLine(
                 spacingNoteX - style.fontSize / 4 - notePanning,
-                style.staffY + style.spatium * (j + 3) * ledgerDirection,
+                style.staffY + style.spatium * (j + 3) * ledgerDirection + displayedLine * style.systemSpacing,
                 spacingNoteX + style.fontSize * 3 / 4  - notePanning,
-                style.staffY + style.spatium * (j + 3) * ledgerDirection);
+                style.staffY + style.spatium * (j + 3) * ledgerDirection + displayedLine * style.systemSpacing);
             }
 
             if (!isRest && firstTime){
