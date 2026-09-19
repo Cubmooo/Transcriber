@@ -18,7 +18,7 @@ StaveLayout DefineLayoutConstants(int height, int width)
 
     style.lelandFontSize = spatium * 3;
 
-    style.stemLength = spatium * 3.5;
+    style.stemLength = spatium * 2.5;
     style.beamThickness = spatium * 0.5;
     style.stemThickness = spatium * 0.12;
 

@@ -241,113 +241,11 @@ void drawBarLine(QPainter &painter, double x, int line, const StaveLayout &style
     double y = style.staffY + line * style.systemSpacing;
 
     painter.drawLine(
-        x - style.spatium , y - style.spatium * 2,
-        x - style.spatium, y + style.spatium * 2
+        x - style.spatium * 0.4 , y - style.spatium * 2,
+        x - style.spatium * 0.4, y + style.spatium * 2
     );
 }
 
-struct BeamGroup
-{
-    int startIndex;
-    int count;
-    bool stemUp;
-};
-
-std::vector<int> computeNoteLines(const std::vector<std::pair<int, double>> &notes, const StaveLayout &style)
-{
-    std::vector<int> noteLines;
-    double cumulativeNoteX = style.margin;
-    int line = 0;
-
-    for (size_t i = 0; i < notes.size(); ++i)
-    {
-        std::vector<double> noteLengthArray = findNoteLength(static_cast<int>(i), notes);
-        if (!noteLengthArray.empty() && noteLengthArray[0] == -1)
-            continue;
-
-        int notePosition = notes[i].first;
-        bool isRest = (notePosition == 0);
-        int flatSharp = isRest ? 0 : findAccidental(notePosition).second;
-
-        bool firstTime = true;
-        for (double noteLength : noteLengthArray)
-        {
-            noteLines.push_back(line);
-            if (!isRest && firstTime && flatSharp != 0){
-                cumulativeNoteX += style.fontSize * 0.3;
-                line = static_cast<int>(std::floor(cumulativeNoteX / style.screenBeatThreshold));
-            }
-            firstTime = false;
-
-            cumulativeNoteX += findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
-            line = static_cast<int>(std::floor(cumulativeNoteX / style.screenBeatThreshold));
-        }
-    }
-    return noteLines;
-}
-
-std::vector<BeamGroup> computeBeamGroups(const std::vector<std::pair<int, double>> &notes, const std::vector<int> &noteLines)
-{
-    std::vector<BeamGroup> groups;
-    constexpr double epsilon = 1e-6;
-
-    int flatIndex = 0;
-    int groupStart = -1;
-    int groupCount = 0;
-    bool groupStemUp = false;
-    int groupHalfBar = -1;
-    int groupLine = -1; 
-
-    auto closeGroup = [&]()
-    {
-        if (groupCount >= 2){
-            groups.push_back({groupStart, groupCount, groupStemUp});
-        }
-        groupStart = -1;
-        groupCount = 0;
-        groupHalfBar = -1;
-        groupLine = -1;
-    };
-
-    for (size_t i = 0; i < notes.size(); ++i)
-    {
-        std::vector<double> noteLengthArray = findNoteLength(static_cast<int>(i), notes);
-        if (!noteLengthArray.empty() && noteLengthArray[0] == -1){
-            continue;
-        }
-
-        int notePosition = notes[i].first;
-        bool isRest = (notePosition == 0);
-        bool stemUp = (notePosition > 59);
-        double beat = notes[i].second;
-
-        for (double noteLength : noteLengthArray)
-        {
-            bool beamable = !isRest && noteLength < 0.75 - epsilon;
-            int halfBar = static_cast<int>(std::floor(beat / 2.0 + epsilon));
-            int currentLine = (flatIndex < static_cast<int>(noteLines.size()))
-                                  ? noteLines[flatIndex] : 0;
-
-            if (beamable && groupCount > 0 && halfBar == groupHalfBar && groupCount < 4){
-                groupCount++;
-            } else {
-                closeGroup();
-                if (beamable){
-                    groupStart = flatIndex;
-                    groupCount = 1;
-                    groupHalfBar = halfBar;
-                    groupStemUp = stemUp;
-                    groupLine = currentLine;
-                }
-            }
-
-            beat += noteLength;
-            flatIndex++;
-        }
-    }
-    closeGroup();
-    return groups;
-}
 
 void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, bool stemUp, const StaveLayout &style)
 {
@@ -395,14 +293,26 @@ void NoteWidget::paintEvent(QPaintEvent *)
     int line = 0;
     double spacingNoteX = style.margin;
 
-    std::vector<int> noteLines = computeNoteLines(notes, style);
-    std::vector<BeamGroup> beamGroups = computeBeamGroups(notes, noteLines);
-    size_t nextGroupIdx = 0;
-    int flatIndex = 0;
-    bool inGroup = false;
-    int groupRemaining = 0;
-    bool groupStemUpCached = false;
-    std::vector<QPointF> beamStemPoints;
+    struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; };
+    std::vector<PendingBeamNote> pendingBeam;
+    int pendingHalfBar = -1, pendingLine = -1;
+    bool pendingStemUp = false;
+
+    auto flushBeam = [&]()
+    {
+        if (pendingBeam.size() >= 2){
+            std::vector<QPointF> pts;
+            for (auto &pn : pendingBeam){
+                painter.drawText(pn.x, pn.y, QString(SMuFL::noteheadBlack));
+                pts.emplace_back(pn.x, pn.y);
+            }
+            drawBeamGroup(painter, pts, pendingStemUp, style);
+        } else if (pendingBeam.size() == 1){
+            auto &pn = pendingBeam[0];
+            painter.drawText(pn.x, pn.y, QString(findNoteGlyph(pn.noteLength, pn.notePosition, pn.isRest)));
+        }
+        pendingBeam.clear();
+    };
 
     for (size_t i = 0; i < notes.size(); ++i)
     {
@@ -436,43 +346,40 @@ void NoteWidget::paintEvent(QPaintEvent *)
         double previousNoteY = -1;
         for (double noteLength : noteLengthArray){
 
+            bool isFirstInBar = std::fmod(std::fmod(currentBeat, 4.0) + 4.0, 4.0) < 1e-6;
+
+            if (isFirstInBar){
+                cumulativeNoteX += style.fontSize * 0.3;
+                line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
+                spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
+            }
+
             if (!isRest && firstTime && flatSharp != 0){
                 cumulativeNoteX += style.fontSize * 0.3;
                 line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
                 spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
             }
 
-            bool startsGroup = (nextGroupIdx < beamGroups.size() && beamGroups[nextGroupIdx].startIndex == flatIndex);
-            if (startsGroup){
-                inGroup = true;
-                groupRemaining = beamGroups[nextGroupIdx].count;
-                groupStemUpCached = beamGroups[nextGroupIdx].stemUp;
-                beamStemPoints.clear();
-                nextGroupIdx++;
-            }
-
-            QString crochet;
             isRest = (notePosition == 0);
-
-            if (inGroup){
-                crochet = QString(SMuFL::noteheadBlack);
-            } else {
-                crochet = findNoteGlyph(noteLength, notePosition, isRest);
-            }
-
-            double noteSpacingDistance = 0;
-            noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
+            double noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
             int noteY = style.staffY - style.spatium * distanceFromBase / 2 + line * style.systemSpacing;
-
             double noteHeadX = spacingNoteX;
-            painter.drawText(spacingNoteX - notePanning, noteY, crochet);
 
-            if (inGroup){
-                beamStemPoints.push_back(QPointF(spacingNoteX - notePanning, noteY));
-                groupRemaining--;
-                if (groupRemaining == 0){
-                    drawBeamGroup(painter, beamStemPoints, groupStemUpCached, style);
-                    inGroup = false;
+            bool beamable = !isRest && noteLength < 0.75 - 1e-6;
+            int halfBar = static_cast<int>(std::floor(currentBeat / 2.0 + 1e-6));
+
+            if (beamable && !pendingBeam.empty() && halfBar == pendingHalfBar
+                && line == pendingLine && pendingBeam.size() < 4){
+                pendingBeam.push_back({spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest});
+            } else {
+                flushBeam();
+                if (beamable){
+                    pendingBeam.push_back({spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest});
+                    pendingHalfBar = halfBar;
+                    pendingLine = line;
+                    pendingStemUp = stemUp;
+                } else {
+                    painter.drawText(spacingNoteX - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
                 }
             }
 
@@ -482,20 +389,10 @@ void NoteWidget::paintEvent(QPaintEvent *)
             bool isBarLine = (beatMod < 0.001 || beatMod > 3.999);
 
             double newCumulativeNoteX = cumulativeNoteX + noteSpacingDistance;
-            int newLine = std::floor(newCumulativeNoteX / style.screenBeatThreshold);
-
-            if (isBarLine){
-                if (newLine > line){
-                    double edgeX = (line + 1) * style.screenBeatThreshold;
-                    drawBarLine(painter, edgeX - notePanning, line, style);
-                } else {
-                    double barLineX = newCumulativeNoteX - line * style.screenBeatThreshold;
-                    drawBarLine(painter, barLineX - notePanning, line, style);
-                }
-            }
+            double barLineX = newCumulativeNoteX - line * style.screenBeatThreshold;
+            if (isBarLine){drawBarLine(painter, barLineX - notePanning, line, style);}
 
             cumulativeNoteX = newCumulativeNoteX;
-            line = newLine;
             spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
 
             for (int j = 0; j < std::abs(distanceFromBase) / 2 - 2; j++){
@@ -522,8 +419,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             firstTime = false;
             previousSpacingNoteX = spacingNoteX;
             previousNoteY = noteY;
-
-            flatIndex++;
         }
     }
+    flushBeam();
 }
