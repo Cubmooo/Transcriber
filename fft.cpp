@@ -15,11 +15,17 @@ void FFT()
 
     while (true)
     {
+        std::vector<float> localBuffer;
+        {
+            std::unique_lock<std::mutex> lock(bufferMtx);
+            bufferCv.wait(lock, [] { return audioBufferReady; });
+            localBuffer = audioBuffer;
+            audioBufferReady = false;
+        }
         /*calculate the  rms effectively "energy"
         in this context it is used as a measure of volume
         */
         double rms = 0.0;
-        std::vector<float> localBuffer = sharedBuffer;
         for (float sample : localBuffer)
             rms += sample * sample;
         rms = sqrt(rms / BUFFER_SIZE);

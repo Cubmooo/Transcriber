@@ -9,6 +9,12 @@ double sharedNote = 0;
 bool noteHandOverReady = false;
 bool getBMPReady = false;
 bool bpmReady = false;
+
+std::mutex bufferMtx;
+std::condition_variable bufferCv;
+bool audioBufferReady = false;
+std::vector<float> audioBuffer;
+
 std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
 std::vector<std::pair<int, double>> sharedRealTimeList;
 std::vector<std::pair<int, double>> BPMTimeList;

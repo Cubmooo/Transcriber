@@ -14,6 +14,12 @@ extern double sharedNote;
 extern bool noteHandOverReady;
 extern bool getBMPReady;
 extern bool bpmReady;
+
+extern std::mutex bufferMtx;
+extern std::condition_variable bufferCv;
+extern bool audioBufferReady;
+extern std::vector<float> audioBuffer;
+
 extern std::vector<float> sharedBuffer;
 extern std::vector<std::pair<int, double>> sharedRealTimeList;
 extern std::vector<std::pair<int, double>> BPMTimeList;
