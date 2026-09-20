@@ -1,6 +1,9 @@
 #include "pch/pch.h"
 #include "mainwindow.h"
 #include "layout.h"
+#include "buttons.h"
+#include "globals.h"
+#include <atomic>
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -30,6 +33,13 @@ MainWindow::MainWindow(QWidget *parent)
     title->setFont(titleFont);
 
     layout->addWidget(title);
+
+    auto *buttons = new Buttons(this);
+    layout->addWidget(buttons);
+    connect(buttons, &Buttons::pauseToggled, this, [](bool paused)
+    {
+        transcriptionPaused.store(paused);
+    });
 
     stave = new StaveWidget(this);
     //stave->setMinimumHeight(style.staveWidgetHeight);

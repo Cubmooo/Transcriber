@@ -21,6 +21,10 @@ struct StaveLayout
 
     double noteGap;
     double barGap;
+    double barLineInset;
+    double dotRadius;
+    double stubLength;
+    double afterBarLineGap;
 
     double endInset;
     double minShoulderH;

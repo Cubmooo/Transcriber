@@ -9,6 +9,8 @@ int secondsToBeats()
     bool firstNote = true;
     int previousNote = 0;
     double beatLength = 0.0;
+    bool wasPaused = false;
+    double pauseStart = 0.0;   
 
     while (true)
     {
@@ -22,6 +24,20 @@ int secondsToBeats()
         }
 
         double currentTime = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
+
+        if (transcriptionPaused.load())
+        {
+            if (!wasPaused){
+                pauseStart = currentTime;
+                wasPaused = true;
+            }
+            continue;
+        }
+        if (wasPaused){
+            lastTimeStamp += currentTime - pauseStart;
+            wasPaused = false;
+        }
+
         double timeDelta = currentTime - lastTimeStamp;
 
         //needed to avoid comparing to the previous note when previous note doesn't exist 

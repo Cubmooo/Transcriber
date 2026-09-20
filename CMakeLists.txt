@@ -23,10 +23,10 @@ add_executable(MyProject
     bpm.cpp
     mainwindow.cpp
     freqsender.cpp
+    buttons.cpp
     stave.cpp
     note.cpp
     resources.qrc
-
 )
 
 target_compile_options(MyProject PRIVATE /fsanitize=address)

@@ -20,6 +20,10 @@ StaveLayout DefineLayoutConstants(int height, int width)
 
     style.noteGap = spatium * 0.5;
     style.barGap = spatium * 1;
+    style.barLineInset = spatium * 0.4;
+    style.dotRadius = spatium * 0.2;
+    style.stubLength = spatium * 1;
+    style.afterBarLineGap = spatium * 0.3;
 
     style.stemLength = spatium * 2.5;
     style.beamThickness = spatium * 0.5;

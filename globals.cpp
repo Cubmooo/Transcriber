@@ -23,3 +23,5 @@ const std::chrono::steady_clock::time_point START = std::chrono::steady_clock::n
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 
 QString lelandFamily;
+
+std::atomic<bool> transcriptionPaused{false};

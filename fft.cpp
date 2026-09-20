@@ -44,10 +44,12 @@ void FFT()
         }
 
         
+        //initialise the fft compuatutation bins
         int numBins = FFT_SIZE / 2 + 1;
         double *in = fftw_alloc_real(FFT_SIZE);
         fftw_complex *out = fftw_alloc_complex(numBins);
 
+        //fill fft bin with complex cast of audio input
         std::fill(in, in + FFT_SIZE, 0.0);
         for (int i = 0; i < BUFFER_SIZE; i++)
         {
@@ -55,9 +57,11 @@ void FFT()
             in[i] = static_cast<double>(localBuffer[i] * w);
         }
 
+        // excute FFT
         fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, in, out, FFTW_ESTIMATE);
         fftw_execute(plan);
 
+        //load output into bins of each frequency
         std::vector<double> mag(numBins);
         for (int i = 0; i < numBins; i++)
             mag[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
@@ -65,6 +69,7 @@ void FFT()
         int minBin = (int)(MIN_FREQ * FFT_SIZE / SAMPLE_RATE);
         int maxBin = std::min((int)(MAX_FREQ * FFT_SIZE / SAMPLE_RATE), numBins / NUM_HARMONICS);
 
+        // apply harmonic prodcut spectrum to find fundamental pitch
         std::vector<double> hps(maxBin, 0.0);
         for (int i = minBin; i < maxBin; i++)
         {
@@ -92,7 +97,7 @@ void FFT()
             if (hps[halfBin] >= hps[peakBin] * OCTAVE_BIAS)
                 peakBin = halfBin;
         }
-
+        
         double interpolatedBin = (double)peakBin;
         if (peakBin > minBin && peakBin < maxBin - 1)
         {
@@ -120,6 +125,7 @@ void FFT()
             candidateNote = note;
             stableCount = 0;
         }
+
 
         if (stableCount >= REQUIRED_STABLE_FRAMES)
         {
