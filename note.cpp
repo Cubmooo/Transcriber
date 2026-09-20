@@ -53,6 +53,19 @@ std::pair<int, int> findAccidental(int notePosition){
     return {0, 0};
 }
 
+std::pair<int, int> findLedgerLines(int notePosition, int note); 
+
+int staffStepsFromMiddleLine(int notePosition)
+{
+    int note = findAccidental(notePosition).first;
+    return findLedgerLines(notePosition, note).first;
+}
+
+bool noteStemsUp(int notePosition)
+{
+    return notePosition != 0 && staffStepsFromMiddleLine(notePosition) < 0;
+}
+
 
 
 QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
@@ -73,9 +86,7 @@ QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
         { 0.0,   SMuFL::upStemSemiquaver, SMuFL::downStemSemiquaver, SMuFL::semiquaverRest }
     };
 
-    bool stemUp;
-    if(notePosition > 59){stemUp = true;}
-    else{stemUp = false;}
+    const bool stemUp = !isRest && noteStemsUp(notePosition);
         
     for (const auto& type : noteTypes)
     {
@@ -289,10 +300,16 @@ void drawBarLine(QPainter &painter, double x, int line, const StaveLayout &style
 
 
 
-void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &noteHeads, const std::vector<double> &lengths, bool stemUp, const StaveLayout &style)
+void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &heads, const std::vector<double> &lengths, bool stemUp, const StaveLayout &style)
 {
-    if (noteHeads.size() < 2) return;
+    if (heads.size() < 2) return;
     const double dir = stemUp ? -1.0 : 1.0;
+
+    const double headWidth = painter.fontMetrics().horizontalAdvance(QString(SMuFL::noteheadBlack));
+    const double stemOffset = stemUp ? headWidth - style.stemThickness / 2.0 : style.stemThickness / 2.0;
+
+    std::vector<QPointF> noteHeads = heads;
+    for (auto &p : noteHeads) p.setX(p.x() + stemOffset);
 
     double beamY;
     if (stemUp){
@@ -381,20 +398,24 @@ void NoteWidget::paintEvent(QPaintEvent *)
     struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; };
     std::vector<PendingBeamNote> pendingBeam;
     int pendingHalfBar = -1, pendingLine = -1;
-    bool pendingStemUp = false;
 
     auto flushBeam = [&]()
     {
         if (pendingBeam.size() >= 2){
             std::vector<QPointF> pts;
             std::vector<double> lengths;
+            int furthestAbove = 0, furthestBelow = 0;  
             for (auto &pn : pendingBeam){
                 painter.drawText(pn.x, pn.y, QString(SMuFL::noteheadBlack));
                 pts.emplace_back(pn.x, pn.y);
                 lengths.push_back(pn.noteLength);
+                int steps = staffStepsFromMiddleLine(pn.notePosition);
+                furthestAbove = std::max(furthestAbove, steps);
+                furthestBelow = std::max(furthestBelow, -steps); 
             }
-            drawBeamGroup(painter, pts, lengths, pendingStemUp, style);
-        } else if (pendingBeam.size() == 1){
+            drawBeamGroup(painter, pts, lengths, furthestBelow > furthestAbove, style);
+        } 
+        else if (pendingBeam.size() == 1){
             auto &pn = pendingBeam[0];
             painter.drawText(pn.x, pn.y, QString(findNoteGlyph(pn.noteLength, pn.notePosition, pn.isRest)));
         }
@@ -413,7 +434,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note);
         }
 
-        bool stemUp = (notePosition > 59);
+        bool stemUp = !isRest && noteStemsUp(notePosition);
 
         std::vector<double> noteLengthArray = findNoteLength(i, notes);
         if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
@@ -491,7 +512,6 @@ void NoteWidget::paintEvent(QPaintEvent *)
                     pendingBeam = earlier;
                     flushBeam();
                     pendingBeam = carry;
-                    pendingStemUp = pendingBeam.empty() ? stemUp : (pendingBeam.front().notePosition > 59);
                 }
                 pendingBeam.push_back(current);
             }
@@ -502,7 +522,6 @@ void NoteWidget::paintEvent(QPaintEvent *)
                     pendingBeam.push_back(current);
                     pendingHalfBar = halfBar;
                     pendingLine = line;
-                    pendingStemUp = stemUp;
                 } else {
                     painter.drawText(spacingNoteX - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
                 }

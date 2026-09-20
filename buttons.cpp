@@ -7,6 +7,13 @@
 Buttons::Buttons(QWidget *parent)
     : QWidget(parent)
 {
+
+    setAutoFillBackground(true);
+
+    QPalette palette = this->palette();
+    palette.setColor(QPalette::Window, QColor("#FF0000"));
+    setPalette(palette);
+
     playPauseButton = new QPushButton("Pause", this);
     playPauseButton->setMinimumWidth(120);
     playPauseButton->setCursor(Qt::PointingHandCursor);
@@ -31,8 +38,9 @@ Buttons::Buttons(QWidget *parent)
     layout->addWidget(playPauseButton);
     layout->addStretch();
  
-    // stay as tall as the button so the staves keep the spare space
+    // stay as tall as the button so the staves dont overlap
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    setFixedHeight(80);
  
     connect(playPauseButton, &QPushButton::clicked, this, [this]()
     {

@@ -19,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(central);
 
     QVBoxLayout *layout = new QVBoxLayout(central);
+    layout->setSpacing(0);
 
     auto *title = new QLabel("Transcriber");
     title->setAlignment(Qt::AlignCenter);
