@@ -19,9 +19,10 @@ std::vector<float> sharedBuffer(BUFFER_SIZE, 0.0f);
 std::vector<std::pair<int, double>> sharedRealTimeList;
 std::vector<std::pair<int, double>> BPMTimeList;
 
-const std::chrono::steady_clock::time_point START = std::chrono::steady_clock::now();
+std::chrono::steady_clock::time_point START = std::chrono::steady_clock::now();
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 
 QString lelandFamily;
 
-std::atomic<bool> transcriptionPaused{false};
+bool transcriptionPaused = false;
+int  clearData = 0;

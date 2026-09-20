@@ -17,9 +17,9 @@ StaveWidget::StaveWidget(QWidget *parent)
 
 void StaveWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
 {
+    noteWidget->setNote(BPMTimeList);
     if (BPMTimeList.empty())
         return;
-    noteWidget->setNote(BPMTimeList);
     notePosition = BPMTimeList.back().first;
     update();
 }

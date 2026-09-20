@@ -23,8 +23,9 @@ extern std::vector<float> audioBuffer;
 extern std::vector<float> sharedBuffer;
 extern std::vector<std::pair<int, double>> sharedRealTimeList;
 extern std::vector<std::pair<int, double>> BPMTimeList;
-extern const std::chrono::steady_clock::time_point START;
+extern std::chrono::steady_clock::time_point START;
 using TimeDuration = std::chrono::duration<int64_t, std::nano>;
 extern QString lelandFamily;
 
-extern std::atomic<bool> transcriptionPaused;
+extern bool transcriptionPaused;
+extern int  clearData; 

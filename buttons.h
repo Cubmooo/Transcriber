@@ -12,8 +12,12 @@ public:
  
 signals:
     void pauseToggled(bool paused);
+    void clearRequested();  
  
 private:
+    QPushButton *makeButton(const QString &text, int width);
+
     QPushButton *playPauseButton;
+    QPushButton *clearButton;
     bool paused = false;
 };

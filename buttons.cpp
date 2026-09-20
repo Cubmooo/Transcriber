@@ -3,6 +3,14 @@
  
 #include <QHBoxLayout>
 #include <QPushButton>
+
+QPushButton *Buttons::makeButton(const QString &text, int width)
+{
+    auto *button = new QPushButton(text, this);
+    button->setMinimumWidth(width);
+    button->setCursor(Qt::PointingHandCursor);
+    return button;
+}
  
 Buttons::Buttons(QWidget *parent)
     : QWidget(parent)
@@ -11,13 +19,10 @@ Buttons::Buttons(QWidget *parent)
     setAutoFillBackground(true);
 
     QPalette palette = this->palette();
-    palette.setColor(QPalette::Window, QColor("#FF0000"));
+    palette.setColor(QPalette::Window, QColor("#ff0000"));
     setPalette(palette);
 
-    playPauseButton = new QPushButton("Pause", this);
-    playPauseButton->setMinimumWidth(120);
-    playPauseButton->setCursor(Qt::PointingHandCursor);
-    playPauseButton->setStyleSheet(
+    setStyleSheet(
         "QPushButton {"
         "    background-color: #A0A0A0;"
         "    color: black;"
@@ -27,18 +32,19 @@ Buttons::Buttons(QWidget *parent)
         "    font-size: 16px;"
         "    font-weight: bold;"
         "}"
-        /*"QPushButton:hover   { background-color: #B4B4B4; }"
-        "QPushButton:pressed { background-color: #8C8C8C; }"&*/
     );
- 
-    // stretch on both sides keeps the button centred
+
+    playPauseButton = makeButton("Pause", 120);
+    clearButton     = makeButton("Clear", 120);
+
     auto *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(0, 4, 0, 4);
+    layout->setContentsMargins(0, 3, 0, 5);
+    layout->setSpacing(12);
     layout->addStretch();
     layout->addWidget(playPauseButton);
+    layout->addWidget(clearButton);
     layout->addStretch();
- 
-    // stay as tall as the button so the staves dont overlap
+
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     setFixedHeight(80);
  
@@ -48,4 +54,6 @@ Buttons::Buttons(QWidget *parent)
         playPauseButton->setText(paused ? "Play" : "Pause");
         emit pauseToggled(paused);
     });
+
+    connect(clearButton, &QPushButton::clicked, this, &Buttons::clearRequested);
 }

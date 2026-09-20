@@ -386,6 +386,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
     static double lastFragmentX = 0;
     static int lastFragmentLine = 1;
+    if (notes.empty()){ lastFragmentX = 0; lastFragmentLine = 1; }
     int lineOffset = computeLineOffset(lastFragmentX, lastFragmentLine, style);
 
     auto isDisplayed = [&](int displayedLine){ return displayedLine >= 0 && displayedLine < style.numberOfLines; };

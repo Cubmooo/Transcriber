@@ -8,6 +8,8 @@ void magReggression()
     double previousNoteLength = 0;
     BPMTimeList.emplace_back(0, 0.0);
     int previousNote = -1;
+    int storedClearedTime = 0;
+
 
     while (true)
     {
@@ -17,6 +19,14 @@ void magReggression()
                        { return getBMPReady; });
             realTimeList = sharedRealTimeList;
             getBMPReady = false;
+            const int clearTime = clearData;
+            if (clearTime != storedClearedTime)
+            {
+                storedClearedTime = clearTime;
+                beat = 0.0;
+                previousNoteLength = 0;
+                previousNote = -1;
+            }
         }
 
         int noPlayedNotes = realTimeList.size();
@@ -49,13 +59,16 @@ void magReggression()
         }*/
         
         {
-            std::lock_guard<std::mutex> lock(bpmMtx);
+            std::scoped_lock lock(mtx, bpmMtx);
+            if (clearData != storedClearedTime) continue;
             bpmReady = true;
             cvBPM.notify_one();
             if (!BPMTimeList.empty()){
                 BPMTimeList.emplace_back(realTimeList.back().first, beat);
             }
+            std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
         }
+        std::cout << "bps: " << findBPS(noPlayedNotes, realTimeList) << std::endl;
         std::cout << "bps: " << findBPS(noPlayedNotes, realTimeList) << std::endl;
         std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
     }

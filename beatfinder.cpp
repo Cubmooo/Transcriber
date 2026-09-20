@@ -10,22 +10,34 @@ int secondsToBeats()
     int previousNote = 0;
     double beatLength = 0.0;
     bool wasPaused = false;
-    double pauseStart = 0.0;   
+    double pauseStart = 0.0;
+    int storedClearedTime = 0; 
 
     while (true)
     {
+        bool isPaused; 
         //safely receive the pitch of the current note from fft.cpp 
         {
             std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, []
-                    { return noteHandOverReady; });
+            if (clearData != storedClearedTime)
+            {
+                storedClearedTime = clearData;
+                realTimeList.clear();
+                firstNote = true;
+                previousNote = 0;
+                lastTimeStamp = 0.0;
+                wasPaused = false;
+                START = std::chrono::steady_clock::now();
+            }
+            cv.wait(lock, [] { return noteHandOverReady; });
             note = sharedNote;
             noteHandOverReady = false;
+            isPaused = transcriptionPaused;  
         }
 
         double currentTime = std::chrono::duration<double>(std::chrono::steady_clock::now() - START).count();
 
-        if (transcriptionPaused.load())
+        if (isPaused)
         {
             if (!wasPaused){
                 pauseStart = currentTime;
@@ -56,6 +68,7 @@ int secondsToBeats()
             lastTimeStamp = currentTime;
             {
                 std::lock_guard<std::mutex> lock(mtx);
+                if (clearData != storedClearedTime) continue;
                 sharedRealTimeList = realTimeList;
                 getBMPReady = true;
             }

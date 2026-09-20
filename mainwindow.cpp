@@ -3,7 +3,6 @@
 #include "layout.h"
 #include "buttons.h"
 #include "globals.h"
-#include <atomic>
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -39,7 +38,22 @@ MainWindow::MainWindow(QWidget *parent)
     layout->addWidget(buttons);
     connect(buttons, &Buttons::pauseToggled, this, [](bool paused)
     {
-        transcriptionPaused.store(paused);
+        std::lock_guard<std::mutex> lock(mtx);
+        transcriptionPaused = paused;
+    });
+
+    connect(buttons, &Buttons::clearRequested, this, [this]()
+    {
+        {
+            std::scoped_lock lock(mtx, bpmMtx);
+            sharedRealTimeList.clear();
+            getBMPReady = false;
+            clearData++;
+            BPMTimeList.clear();
+            BPMTimeList.emplace_back(0, 0.0);
+            bpmReady = false;
+        }
+        updateStave({});
     });
 
     stave = new StaveWidget(this);
