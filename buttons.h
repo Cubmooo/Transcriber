@@ -1,7 +1,10 @@
 #pragma once
 #include <QWidget>
+#include <string>
+#include <vector> 
  
 class QPushButton;
+class QComboBox;
  
 class Buttons : public QWidget
 {
@@ -9,12 +12,14 @@ class Buttons : public QWidget
  
 public:
     explicit Buttons(QWidget *parent = nullptr);
-    void setBPM(double bpm); 
+    void setBPM(double bpm);
+    void setInputDevices(const std::vector<std::pair<int, std::string>> &devices, int selected); 
  
 signals:
     void pauseToggled(bool paused);
     void clearRequested();
-    void bpmScaleRequested(double factor);   
+    void bpmScaleRequested(double factor);
+    void inputDeviceSelected(int device);
  
 private:
     QPushButton *makeButton(const QString &text, int width);
@@ -23,6 +28,7 @@ private:
     QPushButton *clearButton;
     QPushButton *bpmButton;
     QPushButton *bpmUpButton;
-    QPushButton *bpmDownButton;  
+    QPushButton *bpmDownButton;
     bool paused = false;
+    QComboBox *inputBox;
 };

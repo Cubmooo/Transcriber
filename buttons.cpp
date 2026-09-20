@@ -3,6 +3,7 @@
  
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QComboBox>
 
 QPushButton *Buttons::makeButton(const QString &text, int width)
 {
@@ -16,6 +17,20 @@ void Buttons::setBPM(double bpm)
 {
     bpmButton->setText(QString("%1 BPM").arg(qRound(bpm)));
 }
+
+void Buttons::setInputDevices(const std::vector<std::pair<int, std::string>> &devices, int selected)
+{
+    if (inputBox->count() != static_cast<int>(devices.size()))
+    {
+        inputBox->clear();
+        for (const auto &device : devices)
+            inputBox->addItem(QString::fromUtf8(device.second.c_str()), device.first);
+    }
+
+    const int row = inputBox->findData(selected);
+    if (row >= 0 && row != inputBox->currentIndex())
+        inputBox->setCurrentIndex(row);
+}
  
 Buttons::Buttons(QWidget *parent)
     : QWidget(parent)
@@ -28,7 +43,7 @@ Buttons::Buttons(QWidget *parent)
     setPalette(palette);
 
     setStyleSheet(
-        "QPushButton {"
+        "QPushButton, QComboBox {"
         "    background-color: #A0A0A0;"
         "    color: black;"
         "    border: none;"
@@ -47,6 +62,12 @@ Buttons::Buttons(QWidget *parent)
 
     bpmButton->setFocusPolicy(Qt::NoFocus);
 
+    inputBox = new QComboBox(this);
+    inputBox->setPlaceholderText("selected microphone");
+    inputBox->setMinimumWidth(200);
+    inputBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    inputBox->setCursor(Qt::PointingHandCursor);
+
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 3, 0, 5);
     layout->setSpacing(12);
@@ -56,6 +77,7 @@ Buttons::Buttons(QWidget *parent)
     layout->addWidget(bpmButton);
     layout->addWidget(bpmUpButton);
     layout->addWidget(bpmDownButton);
+    layout->addWidget(inputBox);
     layout->addStretch();
 
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

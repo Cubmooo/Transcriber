@@ -3,6 +3,7 @@
 #include "layout.h"
 #include "buttons.h"
 #include "globals.h"
+#include <QTimer>
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -68,6 +69,26 @@ MainWindow::MainWindow(QWidget *parent)
         if (current.size() <= 1) current.clear();
         updateStave(current);
     });
+
+    connect(buttons, &Buttons::inputDeviceSelected, this, [](int device)
+    {
+        std::lock_guard<std::mutex> lock(bufferMtx);
+        requestedInputDevice = device;
+    });
+
+    auto *deviceTimer = new QTimer(this);
+    connect(deviceTimer, &QTimer::timeout, this, [this]()
+    {
+        std::vector<std::pair<int, std::string>> devices;
+        int selected;
+        {
+            std::lock_guard<std::mutex> lock(bufferMtx);
+            devices = inputDevices;
+            selected = requestedInputDevice;
+        }
+        buttons->setInputDevices(devices, selected);
+    });
+    deviceTimer->start(250);
 
     stave = new StaveWidget(this);
     //stave->setMinimumHeight(style.staveWidgetHeight);

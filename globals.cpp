@@ -27,3 +27,5 @@ QString lelandFamily;
 bool transcriptionPaused = false;
 int  clearData = 0;
 double currentBPS = 1.0;
+std::vector<std::pair<int, std::string>> inputDevices;
+int requestedInputDevice = -1;
