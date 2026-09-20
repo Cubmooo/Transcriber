@@ -31,6 +31,26 @@ void Buttons::setInputDevices(const std::vector<std::pair<int, std::string>> &de
     if (row >= 0 && row != inputBox->currentIndex())
         inputBox->setCurrentIndex(row);
 }
+
+void Buttons::setVolume(double rms)
+{
+    constexpr double FLOOR_DB = -54.0;
+    constexpr double CEIL_DB  = -6.0;
+
+    const double db = 20.0 * std::log10(std::max(rms, 1e-9));
+    const int lit = qBound(0, qRound((db - FLOOR_DB) / (CEIL_DB - FLOOR_DB) * 10.0), 10);
+
+    if (lit == litLines) return;
+    litLines = lit;
+
+    QString html = "Inputted volume &nbsp;";
+    for (int i = 0; i < 10; ++i)
+    {
+        const char *colour = i >= lit ? "black" : i < 7 ? "#00C800" : i < 9 ? "#FFE000" : "#FF0000";
+        html += QString("<span style=\"color:%1\">|</span>").arg(colour);
+    }
+    volumeMeter->setText(html);
+}
  
 Buttons::Buttons(QWidget *parent)
     : QWidget(parent)
@@ -43,7 +63,7 @@ Buttons::Buttons(QWidget *parent)
     setPalette(palette);
 
     setStyleSheet(
-        "QPushButton, QComboBox {"
+        "QPushButton, QComboBox, QLabel#volumeMeter {"
         "    background-color: #A0A0A0;"
         "    color: black;"
         "    border: none;"
@@ -68,6 +88,13 @@ Buttons::Buttons(QWidget *parent)
     inputBox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     inputBox->setCursor(Qt::PointingHandCursor);
 
+    volumeMeter = new QLabel(this);
+    volumeMeter->setObjectName("volumeMeter");
+    volumeMeter->setTextFormat(Qt::RichText);
+    volumeMeter->setAlignment(Qt::AlignCenter);
+    volumeMeter->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    setVolume(0.0); 
+
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 3, 0, 5);
     layout->setSpacing(12);
@@ -78,6 +105,7 @@ Buttons::Buttons(QWidget *parent)
     layout->addWidget(bpmUpButton);
     layout->addWidget(bpmDownButton);
     layout->addWidget(inputBox);
+    layout->addWidget(volumeMeter);
     layout->addStretch();
 
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);

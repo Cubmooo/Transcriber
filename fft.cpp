@@ -32,6 +32,11 @@ void FFT()
             rms += sample * sample;
         rms = sqrt(rms / BUFFER_SIZE);
 
+        {
+            std::lock_guard<std::mutex> lock(bufferMtx);
+            inputRMS = rms;
+        }
+
         //if rms is to low it is likely a rest
         //the pitch therefore doesn't have to be found
         if (rms < SILENCE_THRESHOLD)

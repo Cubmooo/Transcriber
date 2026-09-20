@@ -90,6 +90,18 @@ MainWindow::MainWindow(QWidget *parent)
     });
     deviceTimer->start(250);
 
+    auto *volumeTimer = new QTimer(this);
+    connect(volumeTimer, &QTimer::timeout, this, [this]()
+    {
+        double rms;
+        {
+            std::lock_guard<std::mutex> lock(bufferMtx);
+            rms = inputRMS;
+        }
+        buttons->setVolume(rms);
+    });
+    volumeTimer->start(50);
+
     stave = new StaveWidget(this);
     //stave->setMinimumHeight(style.staveWidgetHeight);
     layout->addWidget(stave);
