@@ -29,3 +29,4 @@ extern QString lelandFamily;
 
 extern bool transcriptionPaused;
 extern int  clearData; 
+extern double currentBPS;

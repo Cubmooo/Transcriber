@@ -34,7 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     layout->addWidget(title);
 
-    auto *buttons = new Buttons(this);
+    buttons = new Buttons(this);
     layout->addWidget(buttons);
     connect(buttons, &Buttons::pauseToggled, this, [](bool paused)
     {
@@ -54,6 +54,19 @@ MainWindow::MainWindow(QWidget *parent)
             bpmReady = false;
         }
         updateStave({});
+    });
+
+    connect(buttons, &Buttons::bpmScaleRequested, this, [this](double factor)
+    {
+        tempoScale *= factor;
+
+        std::vector<std::pair<int, double>> current;
+        {
+            std::lock_guard<std::mutex> lock(bpmMtx);
+            current = BPMTimeList;
+        }
+        if (current.size() <= 1) current.clear();
+        updateStave(current);
     });
 
     stave = new StaveWidget(this);
@@ -76,5 +89,13 @@ void MainWindow::updateFrequency(int note)
 
 void MainWindow::updateStave(std::vector<std::pair<int, double>> BPMTimeList)
 {
+    double bps;{
+        std::lock_guard<std::mutex> lock(bpmMtx);
+        bps = currentBPS;
+    }
+
+    for (auto &n : BPMTimeList)
+        n.second *= tempoScale;
     stave->setNote(BPMTimeList);
+    buttons->setBPM(60.0 * bps * tempoScale);
 }

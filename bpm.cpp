@@ -57,25 +57,21 @@ void magReggression()
                 }
             }
         }*/
-        
+
         {
             std::scoped_lock lock(mtx, bpmMtx);
-            if (clearData != storedClearedTime) continue;
-            bpmReady = true;
-            cvBPM.notify_one();
+            if (clearData != storedClearedTime){continue;}
+            currentBPS = findBPS(noPlayedNotes, realTimeList);
             if (!BPMTimeList.empty()){
                 BPMTimeList.emplace_back(realTimeList.back().first, beat);
             }
-            std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
+            bpmReady = true;
+            cvBPM.notify_one();
         }
-        std::cout << "bps: " << findBPS(noPlayedNotes, realTimeList) << std::endl;
-        std::cout << "bps: " << findBPS(noPlayedNotes, realTimeList) << std::endl;
-        std::cout << "(" << BPMTimeList.back().first << ", " << BPMTimeList.back().second << ")\n";
     }
 }
 
-float findBPS(int noPlayedNotes,
-              std::vector<std::pair<int, double>>& realTimeList)
+float findBPS(int noPlayedNotes, std::vector<std::pair<int, double>>& realTimeList)
 {
     if (noPlayedNotes < 2 || realTimeList.size() < 2)
         return 1.0f;

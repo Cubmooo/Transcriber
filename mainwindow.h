@@ -3,6 +3,8 @@
 #include "pch/pch.h"
 #include "stave.h"
 
+class Buttons; 
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -18,4 +20,6 @@ private:
     QLabel *label;
     StaveWidget *stave;
     StaveLayout style;
+    Buttons *buttons;
+    double tempoScale = 1.0;
 };

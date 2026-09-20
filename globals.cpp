@@ -26,3 +26,4 @@ QString lelandFamily;
 
 bool transcriptionPaused = false;
 int  clearData = 0;
+double currentBPS = 1.0;
