@@ -374,6 +374,26 @@ int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLay
     }
 }
 
+double findRestShift(bool isRest, double noteLength, const QPainter& painter, double noteSpacingDistance, double spacingNoteX, const StaveLayout &style){
+    double restShift = 0.0;
+    const QFontMetrics metrics = painter.fontMetrics();
+    double restWidth;
+    double restLeft;
+
+    if (isRest && noteLength >= 4.0 - 1e-6){
+        restWidth = metrics.horizontalAdvance(QString(SMuFL::semibreveRest));
+        restLeft = metrics.boundingRect(QString(SMuFL::semibreveRest)).left();
+    }
+    else if (isRest && noteLength >= 2.0 - 1e-6) {
+        restWidth = metrics.horizontalAdvance(QString(SMuFL::minimRest));
+        restLeft = metrics.boundingRect(QString(SMuFL::minimRest)).left();
+    }
+    else{return restShift;}
+
+    restShift = std::max(0.0, std::min((noteSpacingDistance - restWidth) / 2.0 - restLeft, style.screenBeatThreshold - spacingNoteX - restWidth / 2 )
+    );
+}
+
 
 
 void NoteWidget::paintEvent(QPaintEvent *)
@@ -502,6 +522,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             double noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
             int noteY = style.staffY - style.spatium * distanceFromBase / 2 + displayedLine * style.systemSpacing;
             double noteHeadX = spacingNoteX;
+            double restShift = findRestShift(isRest, noteLength, painter, noteSpacingDistance, spacingNoteX, style);
 
             bool beamable = !isRest && noteLength < 1 - 1e-6;
             int halfBar = static_cast<int>(std::floor(currentBeat / 2.0 + 1e-6));
@@ -536,7 +557,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
                     pendingHalfBar = halfBar;
                     pendingLine = line;
                 } else {
-                    painter.drawText(spacingNoteX - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
+                    painter.drawText(spacingNoteX + restShift - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
                 }
             }
 
