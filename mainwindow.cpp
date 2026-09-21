@@ -29,8 +29,9 @@ MainWindow::MainWindow(QWidget *parent)
     );
 
     QFont titleFont;
-    titleFont.setPointSize(24);
+    titleFont.setPointSize(42);
     titleFont.setBold(true);
+    title->setFixedHeight(120);
     title->setFont(titleFont);
 
     layout->addWidget(title);
@@ -108,10 +109,6 @@ MainWindow::MainWindow(QWidget *parent)
     stave = new StaveWidget(this);
     //stave->setMinimumHeight(style.staveWidgetHeight);
     layout->addWidget(stave);
-
-    label = new QLabel("Hello World", central);
-    layout->addWidget(label);
-
     showMaximized();
 }
 
