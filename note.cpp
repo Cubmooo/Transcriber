@@ -384,6 +384,13 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
     const double headWidth = painter.fontMetrics().horizontalAdvance(QString(SMuFL::noteheadBlack));
 
+    const double clefWidth = std::max(
+        painter.fontMetrics().horizontalAdvance(QString(SMuFL::trebleClef)),
+        painter.fontMetrics().horizontalAdvance(QString(SMuFL::bassClef))
+    );
+
+    const double clefEnd = style.margin + style.preClefSpacing + clefWidth + style.spatium;
+
     static double lastFragmentX = 0;
     static int lastFragmentLine = 1;
     if (notes.empty()){ lastFragmentX = 0; lastFragmentLine = 1; }
@@ -477,6 +484,11 @@ void NoteWidget::paintEvent(QPaintEvent *)
                     cumulativeNoteX = minHeadX;
                     line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
                     spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
+                }
+                double minLineX = clefEnd + leftReach + (firstTime ? 0.0 : style.spatium * 2.0);
+                if (spacingNoteX < minLineX){
+                    cumulativeNoteX += minLineX - spacingNoteX;
+                    spacingNoteX = minLineX;
                 }
             }
 

@@ -75,6 +75,8 @@ void StaveWidget::paintEvent(QPaintEvent *)
         clefYOffset = -style.spatium;
     }
 
-    painter.drawText(
-        style.margin + style.preClefSpacing, style.staffY + clefYOffset, clef);
+    for (int i = 0; i <= style.numberOfLines - 1; i++){
+        painter.drawText(
+            style.margin + style.preClefSpacing, style.staffY + clefYOffset + style.systemSpacing * i, clef);
+    }
 }
