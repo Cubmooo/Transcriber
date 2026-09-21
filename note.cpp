@@ -390,8 +390,8 @@ double findRestShift(bool isRest, double noteLength, const QPainter& painter, do
     }
     else{return restShift;}
 
-    restShift = std::max(0.0, std::min((noteSpacingDistance - restWidth) / 2.0 - restLeft, style.screenBeatThreshold - spacingNoteX - restWidth / 2 )
-    );
+    restShift = std::max(0.0, std::min((noteSpacingDistance - restWidth) / 2.0 - restLeft, style.screenBeatThreshold - spacingNoteX - restWidth / 2 ));
+    return restShift;
 }
 
 
@@ -422,6 +422,8 @@ void NoteWidget::paintEvent(QPaintEvent *)
     int line = 0;
     double spacingNoteX = style.margin;
     bool afterBarLine = false;
+    int accidentalBar = -1;
+    std::unordered_map<int, int> barAccidentals;
 
     struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; };
     std::vector<PendingBeamNote> pendingBeam;
@@ -469,6 +471,16 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
         double currentBeat = notes[i].second;
 
+        if (!isRest){
+            int bar = static_cast<int>(std::floor(currentBeat / 4.0 + 1e-6));
+            if (bar != accidentalBar){ barAccidentals.clear(); accidentalBar = bar; }
+
+            int &inForce = barAccidentals[(notePosition / 12) * 7 + note];
+            int written = flatSharp;
+            flatSharp = (written == inForce) ? 0 : (written == 0 ? 2 : written);
+            inForce = written;
+        }
+
         double notePanning = 0.0;
 
         bool firstTime = true;
@@ -496,7 +508,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             {
                 double leftReach = 0.0;
                 if (!isRest && firstTime && flatSharp != 0){
-                    QString accidentalGlyph = QString(flatSharp == 1 ? SMuFL::sharp : SMuFL::flat);
+                    QString accidentalGlyph = QString(flatSharp == 1 ? SMuFL::sharp : flatSharp == 2 ? SMuFL::natural : SMuFL::flat);
                     leftReach = painter.fontMetrics().horizontalAdvance(accidentalGlyph) + style.fontSize * 0.15;
                 }
                 double minHeadX = slotStart + leftReach + (afterBarLine ? style.barGap - style.spatium * 0.4 : 0.0);
@@ -610,12 +622,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             }
 
             if (visible && !isRest && firstTime){
-                if (flatSharp == 1){
-                    accidental = QString(SMuFL::sharp);
-                }
-                else if (flatSharp == -1){
-                    accidental = QString(SMuFL::flat);
-                }
+                QString accidental = QString(flatSharp == 1 ? SMuFL::sharp : flatSharp == 2 ? SMuFL::natural : SMuFL::flat);
 
                 if (!accidental.isEmpty()){
                     double accidentalWidth = painter.fontMetrics().horizontalAdvance(accidental);

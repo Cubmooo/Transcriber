@@ -33,7 +33,7 @@ namespace SMuFL
     inline const QChar quaverRest(0xE4E6);
     inline const QChar semiquaverRest(0xE4E7);
 
-    // Accidentals
     inline const QChar flat(0xE260);
     inline const QChar sharp(0xE262);
+    inline const QChar natural(0xE261);
 }
