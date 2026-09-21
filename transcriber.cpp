@@ -36,11 +36,6 @@ int main(int argc, char *argv[])
     //connects the gui and audio processing threads
     QObject::connect(
         &sender,
-        &Sender::newFreqRecived,
-        &window,
-        &MainWindow::updateFrequency);
-    QObject::connect(
-        &sender,
         &Sender::staveChangeNeeded,
         &window,
         &MainWindow::updateStave);

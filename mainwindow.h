@@ -13,7 +13,6 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
 
 public slots:
-    void updateFrequency(int note);
     void updateStave(std::vector<std::pair<int, double>> BPMTimeList);
 
 private:

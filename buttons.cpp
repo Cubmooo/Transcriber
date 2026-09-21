@@ -79,6 +79,8 @@ Buttons::Buttons(QWidget *parent)
     bpmButton     = makeButton("? BPM", 150);
     bpmUpButton   = makeButton(QString(QChar(0x25B2)), 60);
     bpmDownButton = makeButton(QString(QChar(0x25BC)), 60);
+    pitchButton = makeButton("Pitch: ?", 280);
+    pitchButton->setFocusPolicy(Qt::NoFocus);
 
     bpmButton->setFocusPolicy(Qt::NoFocus);
 
@@ -106,6 +108,7 @@ Buttons::Buttons(QWidget *parent)
     layout->addWidget(bpmDownButton);
     layout->addWidget(inputBox);
     layout->addWidget(volumeMeter);
+    layout->addWidget(pitchButton);
     layout->addStretch();
 
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -122,4 +125,21 @@ Buttons::Buttons(QWidget *parent)
 
     connect(bpmUpButton,   &QPushButton::clicked, this, [this]() { emit bpmScaleRequested(2.0); });
     connect(bpmDownButton, &QPushButton::clicked, this, [this]() { emit bpmScaleRequested(0.5); });
+}
+
+
+void Buttons::setPitch(double freq)
+{
+    QString text = "Pitch: ?";
+    if (freq >= 20.0)
+    {
+        static const char *names[] = {"C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"};
+
+        const double exact = 57 + 12 * std::log2(freq / 440.0);
+        const int note = qRound(exact);
+        const int cents = qRound((exact - note) * 100.0);
+
+        text = QString::asprintf("Pitch: %s%d  %+d cents", names[note % 12], note / 12, cents);
+    }
+    pitchButton->setText(text);
 }

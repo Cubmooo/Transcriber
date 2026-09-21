@@ -35,6 +35,7 @@ void FFT()
         {
             std::lock_guard<std::mutex> lock(bufferMtx);
             inputRMS = rms;
+            if (rms < SILENCE_THRESHOLD) inputFreq = 0.0;
         }
 
         //if rms is to low it is likely a rest
@@ -116,6 +117,11 @@ void FFT()
 
         double freq = interpolatedBin * SAMPLE_RATE / FFT_SIZE;
         int note = std::round(57 + 12 * std::log2(freq / 440.0));
+
+        {
+            std::lock_guard<std::mutex> lock(bufferMtx);
+            inputFreq = freq;
+        }
 
         fftw_destroy_plan(plan);
         fftw_free(in);

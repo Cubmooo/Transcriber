@@ -16,6 +16,7 @@ public:
     void setBPM(double bpm);
     void setInputDevices(const std::vector<std::pair<int, std::string>> &devices, int selected);
     void setVolume(double rms);     
+    void setPitch(double freq);
  
 signals:
     void pauseToggled(bool paused);
@@ -31,6 +32,7 @@ private:
     QPushButton *bpmButton;
     QPushButton *bpmUpButton;
     QPushButton *bpmDownButton;
+    QPushButton *pitchButton;
     bool paused = false;
     QComboBox *inputBox;
     QLabel *volumeMeter;

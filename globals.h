@@ -33,3 +33,4 @@ extern double currentBPS;
 extern std::vector<std::pair<int, std::string>> inputDevices;   // {PortAudio index, name}
 extern int requestedInputDevice;
 extern double inputRMS;
+extern double inputFreq;

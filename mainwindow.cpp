@@ -11,7 +11,7 @@ extern std::vector<std::pair<int, double>> BPMTimeList;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("Hello Qt");
+    setWindowTitle("Transcriber");
 
     //style = DefineLayoutConstants(height(), width(), 100);
 
@@ -94,11 +94,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(volumeTimer, &QTimer::timeout, this, [this]()
     {
         double rms;
+        double freq;
         {
             std::lock_guard<std::mutex> lock(bufferMtx);
             rms = inputRMS;
+            freq = inputFreq;
         }
         buttons->setVolume(rms);
+        buttons->setPitch(freq);
     });
     volumeTimer->start(50);
 
@@ -110,14 +113,6 @@ MainWindow::MainWindow(QWidget *parent)
     layout->addWidget(label);
 
     showMaximized();
-}
-
-void MainWindow::updateFrequency(int note)
-{
-    label->setText(QString("Frequency: %1 Hz").arg(note));
-    label->adjustSize();
-    label->repaint();
-    return;
 }
 
 void MainWindow::updateStave(std::vector<std::pair<int, double>> BPMTimeList)
