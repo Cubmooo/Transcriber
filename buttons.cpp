@@ -4,12 +4,20 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QComboBox>
+#include <QShortcut>
 
-QPushButton *Buttons::makeButton(const QString &text, int width)
+QPushButton *Buttons::makeButton(const QString &text, int width, const QString &shortcut)
 {
     auto *button = new QPushButton(text, this);
     button->setMinimumWidth(width);
     button->setCursor(Qt::PointingHandCursor);
+
+    if (!shortcut.isEmpty())
+    {
+        auto *key = new QShortcut(QKeySequence(shortcut, QKeySequence::PortableText), this);
+        key->setAutoRepeat(false);
+        connect(key, &QShortcut::activated, button, &QAbstractButton::click);
+    }
     return button;
 }
 
@@ -74,11 +82,11 @@ Buttons::Buttons(QWidget *parent)
         "}"
     );
 
-    playPauseButton = makeButton("Pause", 120);
-    clearButton     = makeButton("Clear", 120);
+    playPauseButton = makeButton("Pause", 120, "Space");
+    clearButton     = makeButton("Clear", 120, "Backspace");
     bpmButton     = makeButton("? BPM", 150);
-    bpmUpButton   = makeButton(QString(QChar(0x25B2)), 60);
-    bpmDownButton = makeButton(QString(QChar(0x25BC)), 60);
+    bpmUpButton   = makeButton(QString(QChar(0x25B2)), 60, "Up");
+    bpmDownButton = makeButton(QString(QChar(0x25BC)), 60, "Down");
     pitchButton = makeButton("Pitch: ?", 280);
     pitchButton->setFocusPolicy(Qt::NoFocus);
 

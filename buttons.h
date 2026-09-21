@@ -25,7 +25,7 @@ signals:
     void inputDeviceSelected(int device);
  
 private:
-    QPushButton *makeButton(const QString &text, int width);
+    QPushButton *makeButton(const QString &text, int width, const QString &shortcut = QString());
 
     QPushButton *playPauseButton;
     QPushButton *clearButton;
