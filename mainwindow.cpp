@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto *title = new QLabel("Transcriber");
     title->setAlignment(Qt::AlignCenter);
     title->setStyleSheet(
-        "background-color: #2596BE;"
+        "background-color: #256CBE;"
         "color: black;"
     );
 

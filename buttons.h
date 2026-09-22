@@ -1,7 +1,10 @@
 #pragma once
 #include <QWidget>
 #include <string>
-#include <vector> 
+#include <vector>
+#include "pitchdial.h"
+#include <QToolButton>
+#include <QMenu>
  
 class QPushButton;
 class QComboBox;
@@ -32,9 +35,9 @@ private:
     QPushButton *bpmButton;
     QPushButton *bpmUpButton;
     QPushButton *bpmDownButton;
-    QPushButton *pitchButton;
+    PitchDial *pitchDial; QLabel *pitchLabel;
     bool paused = false;
-    QComboBox *inputBox;
+    QToolButton *inputButton; QMenu *inputMenu;
     QLabel *volumeMeter;
     int litLines = -1;
 };

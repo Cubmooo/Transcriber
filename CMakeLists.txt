@@ -24,6 +24,7 @@ add_executable(MyProject
     mainwindow.cpp
     freqsender.cpp
     buttons.cpp
+    pitchdial.cpp
     stave.cpp
     note.cpp
     resources.qrc
