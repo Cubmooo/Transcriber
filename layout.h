@@ -34,4 +34,4 @@ struct StaveLayout
     double baseGap;
 };
 
-StaveLayout DefineLayoutConstants(int width, int height);
+StaveLayout DefineLayoutConstants(int width, int height, double zoom);

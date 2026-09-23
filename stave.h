@@ -21,4 +21,5 @@ private:
     QFontMetrics lelandMetrics;
     StaveLayout style;
     int notePosition = 0;
+    double zoom = 1.0;
 };

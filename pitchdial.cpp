@@ -35,21 +35,25 @@ void PitchDial::paintEvent(QPaintEvent *)
     const double radius = (width() - margin * 2) / 2.0;
     const QPointF centre(width() / 2.0, height() - margin);
 
-    QColor trackColor = m_color;
-    trackColor.setAlpha(80);
-    painter.setPen(QPen(trackColor, 3, Qt::SolidLine, Qt::RoundCap));
-    painter.drawArc(QRectF(centre.x() - radius, centre.y() - radius, radius * 2, radius * 2),
-                     0, 180 * 16);
+    constexpr double halfSweep = 65.0;
+    const double startAngle = 90.0 - halfSweep;
+    const double spanAngle  = halfSweep * 2.0;
 
-    const double angleDeg = 90.0 + m_cents * (90.0 / 50.0);
+    QPen trackPen(QColor(0, 0, 0, 70), 3, Qt::SolidLine, Qt::RoundCap);
+    painter.setPen(trackPen);
+    painter.drawArc(QRectF(centre.x() - radius, centre.y() - radius, radius * 2, radius * 2),
+                     qRound(startAngle * 16), qRound(spanAngle * 16));
+
+    const double angleDeg = 90.0 + m_cents * (halfSweep / 50.0);
     const double angleRad = qDegreesToRadians(angleDeg);
     const QPointF tip(centre.x() + radius * std::cos(angleRad),
                        centre.y() - radius * std::sin(angleRad));
 
-    painter.setPen(QPen(m_color, 3, Qt::SolidLine, Qt::RoundCap));
+    painter.setPen(QPen(Qt::black, 3, Qt::SolidLine, Qt::RoundCap));
     painter.drawLine(centre, tip);
 
     painter.setPen(Qt::NoPen);
-    painter.setBrush(m_color);
+    painter.drawEllipse(tip, 3, 3);
+    painter.setBrush(Qt::black);
     painter.drawEllipse(centre, 3, 3);
 }

@@ -12,11 +12,17 @@
 #include <QLabel>
 #include <QFont>
 
-QPushButton *Buttons::makeButton(const QString &text, int width, const QString &shortcut)
+QPushButton *Buttons::makeButton(const QString &content, int width, const QString &shortcut)
 {
-    auto *button = new QPushButton(text, this);
+    auto *button = new QPushButton(this);
     button->setFixedWidth(width);
     button->setCursor(Qt::PointingHandCursor);
+
+    if (content.startsWith(":/")){
+        button->setIcon(QIcon(content));
+        button->setIconSize(QSize(18, 18));
+    }
+    else{button->setText(content);}
 
     if (!shortcut.isEmpty())
     {
@@ -47,12 +53,12 @@ void Buttons::setInputDevices(const std::vector<std::pair<int, std::string>> &de
 
         connect(action, &QAction::triggered, this, [this, id, label]()
         {
-            inputButton->setText(label);
+            inputButton->setText("Input Device");
             emit inputDeviceSelected(id);
         });
 
         if (id == selected)
-            inputButton->setText(label);
+            inputButton->setText("Input Device: " + label + " ");
     }
 }
 
@@ -91,7 +97,7 @@ void Buttons::setVolume(double rms)
     for (int i = 0; i < 10; ++i)
     {
         const char *colour = i >= lit ? "black" : i < 7 ? "#00C800" : i < 9 ? "#FFE000" : "#FF0000";
-        html += QString("<span style=\"color:%1\">|</span>").arg(colour);
+        html += QString("<span style=\"color:%1; font-size:24pt;\">|</span>").arg(colour);
     }
     volumeMeter->setText(html);
 }
@@ -127,7 +133,10 @@ Buttons::Buttons(QWidget *parent)
         "    font-size: 20px;"
         "    padding: 8px 10px;"
         "}"
-        "QToolButton#inputButton::menu-indicator { image: none; }"
+        "QToolButton#inputButton::menu-indicator {"
+        "   image: /images/downarrow.png;"
+        "   subcontrol-position: right center;"
+        "}"
         "QMenu#inputMenu {"
         "    background-color: #287DDF;"
         "    color: black;"
@@ -137,8 +146,14 @@ Buttons::Buttons(QWidget *parent)
         "QMenu#inputMenu::item:selected { background-color: #2971C3; }"
     );
 
-    playPauseButton = makeButton(QString(QChar(0x2016)), 50, "Space");
+    playPauseButton = makeButton("| |", 50, "Space");
     playPauseButton->setObjectName("symbolButton");
+    playPauseButton->setStyleSheet(
+        "QPushButton {"
+        "    padding-top: 7px;"
+        "    padding-bottom: 9px;"
+        "}"
+    );
 
     clearButton = makeButton(QString::fromUtf16(u"\u2715"), 50, "Backspace");
     clearButton->setObjectName("symbolButton");
@@ -148,47 +163,52 @@ Buttons::Buttons(QWidget *parent)
 
     bpmButton = makeButton(QString(QChar(0xE1D5)) + " = ?", 70);
     bpmButton->setFont(bpmFont);
+    bpmButton->setStyleSheet(
+        "QPushButton {"
+        "    padding-top: 14px;"
+        "    padding-bottom: 2px;"
+        "}"
+    );
 
-    bpmUpButton = makeButton(QString(QChar(0x25B2)), 40, "Up");
-    bpmUpButton->setObjectName("symbolButton");
-    bpmDownButton = makeButton(QString(QChar(0x25BC)), 40, "Down");
-    bpmDownButton->setObjectName("symbolButton");
+    bpmUpButton = makeButton(":/images/upArrow.png", 28, "Up");
+    bpmDownButton = makeButton(":/images/downArrow.png", 28, "Down");
 
     bpmButton->setFocusPolicy(Qt::NoFocus);
     bpmButton->setAttribute(Qt::WA_TransparentForMouseEvents);
 
     inputButton = new QToolButton(this);
     inputButton->setObjectName("inputButton");
-    inputButton->setText("selected microphone");
+    inputButton->setText("Input Device:");
     inputButton->setCursor(Qt::PointingHandCursor);
     inputButton->setPopupMode(QToolButton::InstantPopup);
-    inputButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    inputButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     inputButton->setMinimumWidth(200);
 
     inputMenu = new QMenu(inputButton);
     inputMenu->setObjectName("inputMenu");
     inputButton->setMenu(inputMenu);
 
+    pitchLabel = new QLabel("Pitch: ?", this);
+    pitchLabel->setObjectName("pitchLabel");
+    pitchLabel->setFixedWidth(80);
+    pitchLabel->setFocusPolicy(Qt::NoFocus);
+
+    pitchDial = new PitchDial(this);
+    pitchDial->setColor(QColor("#FFFFFF"));
+
     volumeMeter = new QLabel(this);
-    volumeMeter->setFixedWidth(80);
+    volumeMeter->setFixedWidth(110);
     volumeMeter->setObjectName("volumeMeter");
     volumeMeter->setTextFormat(Qt::RichText);
     volumeMeter->setAlignment(Qt::AlignCenter);
     volumeMeter->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     setVolume(0.0); 
 
-    pitchDial = new PitchDial(this);
-    pitchDial->setColor(QColor("#FFFFFF"));
-
-    pitchLabel = new QLabel("Pitch: ?", this);
-    pitchLabel->setObjectName("pitchLabel");
-    pitchLabel->setFocusPolicy(Qt::NoFocus);
-
     auto *pitchLayout = new QHBoxLayout();
     pitchLayout->setContentsMargins(0, 0, 0, 0);
     pitchLayout->setSpacing(8);
-    pitchLayout->addWidget(pitchDial);
     pitchLayout->addWidget(pitchLabel);
+    pitchLayout->addWidget(pitchDial);
 
     auto *pitchContainer = new QWidget(this);
     pitchContainer->setLayout(pitchLayout);
@@ -204,42 +224,39 @@ Buttons::Buttons(QWidget *parent)
         return line;
     };
 
-    constexpr int kGapPlayClear   = 12;
-    constexpr int kGapClearBpm    = 12;
-    constexpr int kGapBpmSpacing  = 6;
-    constexpr int kGapDownInput   = 12;
-    constexpr int kGapVolumePitch = 12;
+    constexpr int gapPlayClear   = 0;
+    constexpr int gapClearBpm    = 8;
+    constexpr int gapBpmSpacing  = 6;
+    constexpr int gapDownInput   = 12;
+    constexpr int gapVolumePitch = 16;
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(12, 3, 12, 5);
     layout->setSpacing(0);
 
     layout->addWidget(playPauseButton);
-    layout->addSpacing(kGapPlayClear);
-    layout->addWidget(makeSeparator());
-    layout->addSpacing(kGapPlayClear);
+    layout->addSpacing(gapPlayClear);
+    layout->addSpacing(gapPlayClear);
 
     layout->addWidget(clearButton);
-    layout->addSpacing(kGapClearBpm);
+    layout->addSpacing(gapClearBpm);
     layout->addWidget(makeSeparator());
-    layout->addSpacing(kGapClearBpm);
+    layout->addSpacing(gapClearBpm);
 
     layout->addWidget(bpmButton);
-    layout->addSpacing(kGapBpmSpacing);
     layout->addWidget(bpmUpButton);
-    layout->addSpacing(kGapBpmSpacing);
     layout->addWidget(bpmDownButton);
-    layout->addSpacing(kGapDownInput);
+    layout->addSpacing(gapDownInput);
     layout->addWidget(makeSeparator());
-    layout->addSpacing(kGapDownInput);
+    layout->addSpacing(gapDownInput);
 
     layout->addWidget(inputButton);
     layout->addStretch();
-    layout->addWidget(volumeMeter);
-    layout->addSpacing(kGapVolumePitch);
-    layout->addWidget(makeSeparator());
-    layout->addSpacing(kGapVolumePitch);
     layout->addWidget(pitchContainer);
+    layout->addSpacing(gapVolumePitch);
+    layout->addWidget(makeSeparator());
+    layout->addSpacing(gapVolumePitch);
+    layout->addWidget(volumeMeter);    
 
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     setFixedHeight(80);
@@ -247,7 +264,8 @@ Buttons::Buttons(QWidget *parent)
     connect(playPauseButton, &QPushButton::clicked, this, [this]()
     {
         paused = !paused;
-        playPauseButton->setText(QString(QChar(paused ? 0x25B6 : 0x2016)));
+        playPauseButton->setText(paused ? "▶" : "| |");
+        playPauseButton->setFont(QFont("Impact"));
         emit pauseToggled(paused);
     });
 

@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>Leland.otf</file>
+        <file>images/downArrow.png</file>
+        <file>images/upArrow.png</file>
     </qresource>
 </RCC>

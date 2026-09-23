@@ -1,10 +1,10 @@
 #include "layout.h"
 
-StaveLayout DefineLayoutConstants(int height, int width)
+StaveLayout DefineLayoutConstants(int height, int width, double zoom = 1.0)
 {
     StaveLayout  style;
 
-    style.spatium = 25;
+    style.spatium = 25 * zoom;
     int spatium = style.spatium;
 
     style.fontSize = spatium * 3;
