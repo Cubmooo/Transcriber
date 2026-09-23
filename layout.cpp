@@ -1,20 +1,22 @@
 #include "layout.h"
 
-StaveLayout DefineLayoutConstants(int height, int width, double zoom = 1.0)
+StaveLayout DefineLayoutConstants(int height, int width, double zoom)
 {
-    StaveLayout  style;
+    StaveLayout style;
 
     style.spatium = 25 * zoom;
     int spatium = style.spatium;
 
     style.fontSize = spatium * 3;
     style.margin = spatium * 3;
-    style.staffY = height * 1/5;
+    style.staffY = spatium * 4;
     style.preClefSpacing = spatium * 3/5;
     style.systemSpacing = spatium * 8;
     style.screenBeatThreshold = width - spatium * 5;
-    style.numberOfLines = 3;
-    style.staveWidgetHeight = style.systemSpacing * style.numberOfLines + spatium * 3;
+
+    int availableHeight = height - style.staffY - spatium * 3;
+    style.numberOfLines = std::max(1, static_cast<int>(availableHeight / style.systemSpacing) + 1);
+    style.staveWidgetHeight = style.staffY + style.systemSpacing * (style.numberOfLines - 1) + spatium * 3;
 
     style.lelandFontSize = spatium * 3;
 
@@ -29,13 +31,11 @@ StaveLayout DefineLayoutConstants(int height, int width, double zoom = 1.0)
     style.beamThickness = spatium * 0.5;
     style.stemThickness = spatium * 0.12;
 
-
-    // tie layout constants
-    style.endInset = spatium * 0;  // pull endpoints in from the notehead edge
-    style.minShoulderH = spatium * 0.9; // minimum arch height
-    style.maxShoulderH = spatium * 2.0; // cap arch height for long ties
-    style.heightRatio = 0.20;           // arch height as a fraction of tie length
-    style.midThickness = spatium * 0.18; // thickness at the fattest point
-    style.baseGap = spatium * 0.35; // gap between notehead and tie
+    style.endInset = spatium * 0;
+    style.minShoulderH = spatium * 0.9;
+    style.maxShoulderH = spatium * 2.0;
+    style.heightRatio = 0.20;
+    style.midThickness = spatium * 0.18;
+    style.baseGap = spatium * 0.35;
     return style;
 }

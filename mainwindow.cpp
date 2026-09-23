@@ -13,13 +13,12 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setWindowTitle("Transcriber");
 
-    //style = DefineLayoutConstants(height(), width(), 100);
-
     QWidget *central = new QWidget(this);
     setCentralWidget(central);
 
     QVBoxLayout *layout = new QVBoxLayout(central);
     layout->setSpacing(0);
+    layout->setContentsMargins(0, 0, 0, 0);
 
     auto *title = new QLabel("Transcriber");
     title->setAlignment(Qt::AlignCenter);
@@ -106,9 +105,34 @@ MainWindow::MainWindow(QWidget *parent)
     });
     volumeTimer->start(50);
 
-    stave = new StaveWidget(this);
-    //stave->setMinimumHeight(style.staveWidgetHeight);
-    layout->addWidget(stave);
+    QWidget *pageFrame = new QWidget(central);
+    pageFrame->setStyleSheet("background-color: #444444;");
+
+    QHBoxLayout *pageFrameLayout = new QHBoxLayout(pageFrame);
+    pageFrameLayout->setContentsMargins(0, 0, 0, 0);
+    pageFrameLayout->setSpacing(0);
+
+    QWidget *page = new QWidget(pageFrame);
+    page->setStyleSheet("background-color: white;");
+
+    QVBoxLayout *pageLayout = new QVBoxLayout(page);
+    pageLayout->setContentsMargins(0, 0, 0, 0);
+    pageLayout->setSpacing(0);
+
+    stave = new StaveWidget(page);
+    pageLayout->addWidget(stave);
+
+    pageFrameLayout->addStretch(2);
+    pageFrameLayout->addWidget(page, 6);
+    pageFrameLayout->addStretch(2);
+
+    layout->addWidget(pageFrame, 1);
+
+    connect(buttons, &Buttons::zoomRequested, this, [this](double factor)
+    {
+        stave->zoomBy(factor);
+    });
+
     showMaximized();
 }
 

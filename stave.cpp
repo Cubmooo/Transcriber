@@ -8,7 +8,7 @@ StaveWidget::StaveWidget(QWidget *parent)
       lelandFont("Leland"),
       lelandMetrics(lelandFont)
 {
-    style = DefineLayoutConstants(height(), width());
+    style = DefineLayoutConstants(height(), width(), zoom);
     lelandFont.setPointSize(style.lelandFontSize);
     setMinimumHeight(style.staveWidgetHeight);
     noteWidget = new NoteWidget(this);
@@ -24,10 +24,21 @@ void StaveWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
     update();
 }
 
+void StaveWidget::zoomBy(double factor)
+{
+    zoom = qBound(0.4, zoom * factor, 3.0);
+    style = DefineLayoutConstants(height(), width(), zoom);
+    lelandFont.setPointSize(style.lelandFontSize);
+    setMinimumHeight(style.staveWidgetHeight);
+    noteWidget->setStaveLayout(style);
+    update();
+}
+
 void StaveWidget::resizeEvent(QResizeEvent *)
 {
     noteWidget->setGeometry(rect());
-    style = DefineLayoutConstants(height(), width());
+    style = DefineLayoutConstants(height(), width(), zoom);
+    lelandFont.setPointSize(style.lelandFontSize);
     noteWidget->setStaveLayout(style);
 }
 

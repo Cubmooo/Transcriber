@@ -188,6 +188,22 @@ Buttons::Buttons(QWidget *parent)
     inputMenu->setObjectName("inputMenu");
     inputButton->setMenu(inputMenu);
 
+    zoomOutButton = makeButton("-", 32);
+    zoomOutButton->setStyleSheet(
+        "QPushButton {"
+        "   font-size: 25px;"
+        "}"
+    );
+    zoomOutButton->setObjectName("symbolButton");
+
+    zoomInButton = makeButton("+", 32);
+    zoomInButton->setStyleSheet(
+        "QPushButton {"
+        "   font-size: 25px;"
+        "}"
+    );
+    zoomInButton->setObjectName("symbolButton");
+
     pitchLabel = new QLabel("Pitch: ?", this);
     pitchLabel->setObjectName("pitchLabel");
     pitchLabel->setFixedWidth(80);
@@ -224,20 +240,17 @@ Buttons::Buttons(QWidget *parent)
         return line;
     };
 
-    constexpr int gapPlayClear   = 0;
     constexpr int gapClearBpm    = 8;
     constexpr int gapBpmSpacing  = 6;
     constexpr int gapDownInput   = 12;
     constexpr int gapVolumePitch = 16;
+    constexpr int gapZoom = 12;
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(12, 3, 12, 5);
     layout->setSpacing(0);
 
     layout->addWidget(playPauseButton);
-    layout->addSpacing(gapPlayClear);
-    layout->addSpacing(gapPlayClear);
-
     layout->addWidget(clearButton);
     layout->addSpacing(gapClearBpm);
     layout->addWidget(makeSeparator());
@@ -249,9 +262,15 @@ Buttons::Buttons(QWidget *parent)
     layout->addSpacing(gapDownInput);
     layout->addWidget(makeSeparator());
     layout->addSpacing(gapDownInput);
-
     layout->addWidget(inputButton);
+
     layout->addStretch();
+
+    layout->addWidget(zoomOutButton);
+    layout->addWidget(zoomInButton);
+    layout->addSpacing(gapZoom);
+    layout->addWidget(makeSeparator());
+    layout->addSpacing(gapZoom);
     layout->addWidget(pitchContainer);
     layout->addSpacing(gapVolumePitch);
     layout->addWidget(makeSeparator());
@@ -273,4 +292,7 @@ Buttons::Buttons(QWidget *parent)
 
     connect(bpmUpButton,   &QPushButton::clicked, this, [this]() { emit bpmScaleRequested(2.0); });
     connect(bpmDownButton, &QPushButton::clicked, this, [this]() { emit bpmScaleRequested(0.5); });
+
+    connect(zoomOutButton, &QPushButton::clicked, this, [this]() { emit zoomRequested(1.0 / 1.1); });
+    connect(zoomInButton,  &QPushButton::clicked, this, [this]() { emit zoomRequested(1.1); });
 }
