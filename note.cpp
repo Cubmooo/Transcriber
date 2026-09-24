@@ -29,6 +29,14 @@ void NoteWidget::setNote(std::vector<std::pair<int, double>> BPMTimeList)
 
 
 
+void NoteWidget::setScrollOffset(int offset)
+{
+    scrollOffset = offset;
+    update();
+}
+
+
+
 std::pair<int, int> findAccidental(int notePosition){
     int semiTones = notePosition % 12;
     static const std::unordered_map<int, std::pair<int, int>> noteTable = {
@@ -53,22 +61,22 @@ std::pair<int, int> findAccidental(int notePosition){
     return {0, 0};
 }
 
-std::pair<int, int> findLedgerLines(int notePosition, int note); 
+std::pair<int, int> findLedgerLines(int notePosition, int note, bool trebleClef); 
 
-int staffStepsFromMiddleLine(int notePosition)
+int staffStepsFromMiddleLine(int notePosition, bool trebleClef)
 {
     int note = findAccidental(notePosition).first;
-    return findLedgerLines(notePosition, note).first;
+    return findLedgerLines(notePosition, note, trebleClef).first;
 }
 
-bool noteStemsUp(int notePosition)
+bool noteStemsUp(int notePosition, bool trebleClef)
 {
-    return notePosition != 0 && staffStepsFromMiddleLine(notePosition) < 0;
+    return notePosition != 0 && staffStepsFromMiddleLine(notePosition, trebleClef) < 0;
 }
 
 
 
-QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
+QChar findNoteGlyph(double noteLength, int notePosition, bool isRest, bool trebleClef){
     struct NoteType
     {
         double minLength;
@@ -86,7 +94,7 @@ QChar findNoteGlyph(double noteLength, int notePosition, bool isRest){
         { 0.0,   SMuFL::upStemSemiquaver, SMuFL::downStemSemiquaver, SMuFL::semiquaverRest }
     };
 
-    const bool stemUp = !isRest && noteStemsUp(notePosition);
+    const bool stemUp = !isRest && noteStemsUp(notePosition, trebleClef);
         
     for (const auto& type : noteTypes)
     {
@@ -204,11 +212,11 @@ std::vector<double> findNoteLength(int i, std::vector<std::pair<int, double>> no
 
 
 
-std::pair<int, int> findLedgerLines(int notePosition, int note){
+std::pair<int, int> findLedgerLines(int notePosition, int note, bool trebleClef){
     int ledgerDirection;
     int distanceFromBase;
     int octaves = notePosition / 12;
-    if (notePosition >= 48){
+    if (trebleClef){
     distanceFromBase = (note - 6) + (octaves - 4) * 7;
     ledgerDirection = -1;
     }
@@ -221,14 +229,54 @@ std::pair<int, int> findLedgerLines(int notePosition, int note){
 
 
 
+constexpr int trebleSwitchThreshold = 53;
+constexpr int bassSwitchThreshold = 43;
+constexpr double accidentalNoteGap = 0.2;
+constexpr double clefReserveGap = 0.6;
+constexpr double clefDrawGap = 0.25;
+
+std::vector<bool> findClefStates(const std::vector<std::pair<int, double>> &notes)
+{
+    std::vector<bool> treble(notes.size());
+    bool current = true;
+    bool haveClef = false;
+    size_t firstPitched = notes.size();
+
+    for (size_t i = 0; i < notes.size(); ++i){
+        int notePosition = notes[i].first;
+        if (notePosition != 0){
+            if (!haveClef){
+                current = notePosition >= 48;
+                haveClef = true;
+                firstPitched = i;
+            }
+            else if (current && notePosition < bassSwitchThreshold){current = false;}
+            else if (!current && notePosition > trebleSwitchThreshold){current = true;}
+        }
+        treble[i] = current;
+    }
+
+    if (haveClef){
+        for (size_t i = 0; i < firstPitched; ++i) treble[i] = treble[firstPitched];
+    }
+
+    return treble;
+}
+
+
+
+double glyphWidth(const QFontMetrics &metrics, const QString &glyph)
+{
+    return std::max<double>(metrics.horizontalAdvance(glyph), metrics.boundingRect(glyph).width());
+}
+
+
+
 double findNoteSpacingDistance(bool isRest, double noteLength, int flatSharp, int fontSize){
     double noteSpacingDistance;
     if (noteLength >= 1){noteSpacingDistance = noteLength;}
-        else{
-            noteSpacingDistance = sqrt(noteLength);
-        }
-        noteSpacingDistance *= fontSize * 1;
-
+    else{noteSpacingDistance = sqrt(noteLength);}
+    noteSpacingDistance *= fontSize * 1;
     return noteSpacingDistance;
 }
 
@@ -363,15 +411,18 @@ void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &heads, const s
 
 
 
-int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLayout &style)
+int computeLineOffset(double lastFragmentX, int lastFragmentLine, const StaveLayout &style, int scrollOffset)
 {
-    if (lastFragmentLine < style.numberOfLines){return 0;}
-    else{
+    int autoOffset = 0;
+    if (lastFragmentLine >= style.numberOfLines){
         if (lastFragmentX > style.screenBeatThreshold * 0.8){
-            return lastFragmentLine - style.numberOfLines + 2;
+            autoOffset = lastFragmentLine - style.numberOfLines + 2;
         }
-        else{return lastFragmentLine - style.numberOfLines + 1;}
+        else{
+            autoOffset = lastFragmentLine - style.numberOfLines + 1;
+        }
     }
+    return qBound(0, autoOffset - scrollOffset, autoOffset);
 }
 
 double findRestShift(bool isRest, double noteLength, const QPainter& painter, double noteSpacingDistance, double spacingNoteX, const StaveLayout &style){
@@ -414,9 +465,16 @@ void NoteWidget::paintEvent(QPaintEvent *)
     static double lastFragmentX = 0;
     static int lastFragmentLine = 1;
     if (notes.empty()){ lastFragmentX = 0; lastFragmentLine = 1; }
-    int lineOffset = computeLineOffset(lastFragmentX, lastFragmentLine, style);
+    int lineOffset = computeLineOffset(lastFragmentX, lastFragmentLine, style, scrollOffset);
+
+    std::vector<bool> trebleFlags = findClefStates(notes);
+    int clefLineDrawn = -1;
 
     auto isDisplayed = [&](int displayedLine){ return displayedLine >= 0 && displayedLine < style.numberOfLines; };
+
+    if (notes.empty() && isDisplayed(0)){
+        painter.drawText(style.margin + style.preClefSpacing, style.staffY + style.spatium, QString(SMuFL::trebleClef));
+    }
 
     double cumulativeNoteX = style.margin;
     int line = 0;
@@ -425,7 +483,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
     int accidentalBar = -1;
     std::unordered_map<int, int> barAccidentals;
 
-    struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; };
+    struct PendingBeamNote { double x, y, noteLength; int notePosition; bool isRest; int beat; bool treble; };
     std::vector<PendingBeamNote> pendingBeam;
     int pendingHalfBar = -1, pendingLine = -1;
 
@@ -439,7 +497,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 painter.drawText(pn.x, pn.y, QString(SMuFL::noteheadBlack));
                 pts.emplace_back(pn.x, pn.y);
                 lengths.push_back(pn.noteLength);
-                int steps = staffStepsFromMiddleLine(pn.notePosition);
+                int steps = staffStepsFromMiddleLine(pn.notePosition, pn.treble);
                 furthestAbove = std::max(furthestAbove, steps);
                 furthestBelow = std::max(furthestBelow, -steps); 
             }
@@ -447,7 +505,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
         } 
         else if (pendingBeam.size() == 1){
             auto &pn = pendingBeam[0];
-            painter.drawText(pn.x, pn.y, QString(findNoteGlyph(pn.noteLength, pn.notePosition, pn.isRest)));
+            painter.drawText(pn.x, pn.y, QString(findNoteGlyph(pn.noteLength, pn.notePosition, pn.isRest, pn.treble)));
         }
         pendingBeam.clear();
     };
@@ -458,13 +516,15 @@ void NoteWidget::paintEvent(QPaintEvent *)
         int notePosition = notes[i].first;
         int note, distanceFromBase = 0, ledgerDirection, flatSharp = 0;
         bool isRest = (notePosition == 0);
+        bool treble = trebleFlags[i];
+        bool clefChangeHere = !isRest && i > 0 && treble != trebleFlags[i - 1];
 
         if (!isRest) {
             std::tie(note, flatSharp) = findAccidental(notePosition);
-            std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note);
+            std::tie(distanceFromBase, ledgerDirection) = findLedgerLines(notePosition, note, treble);
         }
 
-        bool stemUp = !isRest && noteStemsUp(notePosition);
+        bool stemUp = !isRest && noteStemsUp(notePosition, treble);
 
         std::vector<double> noteLengthArray = findNoteLength(i, notes);
         if (!noteLengthArray.empty() && noteLengthArray[0] == -1){continue;}
@@ -490,6 +550,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
         for (double noteLength : noteLengthArray){
 
             const double slotStart = cumulativeNoteX;
+            bool enteringNewLine = firstTime && (line > clefLineDrawn);
 
             bool isFirstInBar = std::fmod(std::fmod(currentBeat, 4.0) + 4.0, 4.0) < 1e-6;
 
@@ -505,13 +566,25 @@ void NoteWidget::paintEvent(QPaintEvent *)
                 spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
             }
 
+            if (firstTime && clefChangeHere && !enteringNewLine){
+                cumulativeNoteX += style.afterBarLineGap;
+                line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
+                spacingNoteX = cumulativeNoteX - line * style.screenBeatThreshold;
+            }
+
             {
                 double leftReach = 0.0;
                 if (!isRest && firstTime && flatSharp != 0){
                     QString accidentalGlyph = QString(flatSharp == 1 ? SMuFL::sharp : flatSharp == 2 ? SMuFL::natural : SMuFL::flat);
-                    leftReach = painter.fontMetrics().horizontalAdvance(accidentalGlyph) + style.fontSize * 0.15;
+                    leftReach = glyphWidth(painter.fontMetrics(), accidentalGlyph) + style.fontSize * accidentalNoteGap;
                 }
-                double minHeadX = slotStart + leftReach + (afterBarLine ? style.barGap - style.spatium * 0.4 : 0.0);
+                if (firstTime && clefChangeHere && !enteringNewLine){
+                    QString clefGlyph = QString(treble ? SMuFL::trebleClef : SMuFL::bassClef);
+                    leftReach += glyphWidth(painter.fontMetrics(), clefGlyph) + style.spatium * clefReserveGap;
+                }
+
+                double barlineClearance = afterBarLine ? style.barGap - (leftReach > 0.0 ? 0.0 : style.spatium * 0.4) : 0.0;
+                double minHeadX = slotStart + leftReach + barlineClearance;
                 if (cumulativeNoteX < minHeadX){
                     cumulativeNoteX = minHeadX;
                     line = std::floor(cumulativeNoteX / style.screenBeatThreshold);
@@ -530,6 +603,16 @@ void NoteWidget::paintEvent(QPaintEvent *)
             lastFragmentX = spacingNoteX;
             lastFragmentLine = line;
 
+            if (line > clefLineDrawn){
+                clefLineDrawn = line;
+                if (visible){
+                    double rowY = style.staffY + displayedLine * style.systemSpacing;
+                    painter.drawText(style.margin + style.preClefSpacing,
+                        rowY + (treble ? style.spatium : -style.spatium),
+                        QString(treble ? SMuFL::trebleClef : SMuFL::bassClef));
+                }
+            }
+
             isRest = (notePosition == 0);
             double noteSpacingDistance = findNoteSpacingDistance(isRest, noteLength, flatSharp, style.fontSize);
             int noteY = style.staffY - style.spatium * distanceFromBase / 2 + displayedLine * style.systemSpacing;
@@ -539,7 +622,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
             bool beamable = !isRest && noteLength < 1 - 1e-6;
             int halfBar = static_cast<int>(std::floor(currentBeat / 2.0 + 1e-6));
             int beat    = static_cast<int>(std::floor(currentBeat + 1e-6));
-            PendingBeamNote current{spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest, beat}; 
+            PendingBeamNote current{spacingNoteX - notePanning, (double)noteY, noteLength, notePosition, isRest, beat, treble}; 
 
             if (!visible){
                 flushBeam();
@@ -569,7 +652,7 @@ void NoteWidget::paintEvent(QPaintEvent *)
                     pendingHalfBar = halfBar;
                     pendingLine = line;
                 } else {
-                    painter.drawText(spacingNoteX + restShift - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest)));
+                    painter.drawText(spacingNoteX + restShift - notePanning, noteY, QString(findNoteGlyph(noteLength, notePosition, isRest, treble)));
                 }
             }
 
@@ -597,13 +680,13 @@ void NoteWidget::paintEvent(QPaintEvent *)
             double beatMod = std::fmod(std::fmod(currentBeat, 4.0) + 4.0, 4.0);
             bool isBarLine = (beatMod < 0.001 || beatMod > 3.999);
 
-            QString extentGlyph = QString(findNoteGlyph(noteLength, notePosition, isRest));
+            QString extentGlyph = QString(findNoteGlyph(noteLength, notePosition, isRest, treble));
             double noteExtent = std::max<double>(painter.fontMetrics().horizontalAdvance(extentGlyph),
                                                  painter.fontMetrics().boundingRect(extentGlyph).right());
             if (!isRest && isDottedLength(noteLength)) noteExtent = std::max(noteExtent, headWidth + style.spatium * 0.6);
             double minSlot = noteExtent + (isBarLine ? style.barGap + style.spatium * 0.4 : style.noteGap);
 
-            double newCumulativeNoteX = cumulativeNoteX + std::max(noteSpacingDistance, minSlot);
+            double newCumulativeNoteX = cumulativeNoteX + std::max(noteSpacingDistance, minSlot) + restShift;
             int newLine = std::floor(newCumulativeNoteX / style.screenBeatThreshold);
             double barLineX = newCumulativeNoteX - line * style.screenBeatThreshold;
             if (isBarLine && visible){drawBarLine(painter, barLineX - notePanning, displayedLine, style);}
@@ -623,10 +706,20 @@ void NoteWidget::paintEvent(QPaintEvent *)
 
             if (visible && !isRest && firstTime){
                 QString accidental = QString(flatSharp == 1 ? SMuFL::sharp : flatSharp == 2 ? SMuFL::natural : SMuFL::flat);
+                double leftEdge = noteHeadX - notePanning;
 
                 if (!accidental.isEmpty()){
-                    double accidentalWidth = painter.fontMetrics().horizontalAdvance(accidental);
-                    painter.drawText(noteHeadX - accidentalWidth - notePanning - style.fontSize * 0.15, noteY, accidental);
+                    double accidentalWidth = glyphWidth(painter.fontMetrics(), accidental);
+                    leftEdge -= accidentalWidth + style.fontSize * accidentalNoteGap;
+                    painter.drawText(leftEdge, noteY, accidental);
+                }
+
+                if (clefChangeHere && !enteringNewLine){
+                    QString clefGlyph = QString(treble ? SMuFL::trebleClef : SMuFL::bassClef);
+                    double clefGlyphW = glyphWidth(painter.fontMetrics(), clefGlyph);
+                    double clefRowY = style.staffY + displayedLine * style.systemSpacing + (treble ? style.spatium : -style.spatium);
+                    double clefX = leftEdge - style.spatium * clefDrawGap - clefGlyphW;
+                    painter.drawText(clefX, clefRowY, clefGlyph);
                 }
             }
             firstTime = false;

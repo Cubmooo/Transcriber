@@ -12,6 +12,7 @@ public:
 
     void setNote(std::vector<std::pair<int, double>> BPMTimeList);
     void setStaveLayout(const StaveLayout &layout);
+    void setScrollOffset(int offset);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -21,4 +22,5 @@ private:
     QFont lelandFont;
     QFontMetrics lelandMetrics;
     std::vector<std::pair<int, double>> notes;
+    int scrollOffset = 0;
 };

@@ -147,6 +147,7 @@ Buttons::Buttons(QWidget *parent)
     );
 
     playPauseButton = makeButton("| |", 50, "Space");
+    playPauseButton->setToolTip("Play/Pause (Space)");
     playPauseButton->setObjectName("symbolButton");
     playPauseButton->setStyleSheet(
         "QPushButton {"
@@ -156,12 +157,14 @@ Buttons::Buttons(QWidget *parent)
     );
 
     clearButton = makeButton(QString::fromUtf16(u"\u2715"), 50, "Backspace");
+    clearButton->setToolTip("Clear Score (Backspace)");
     clearButton->setObjectName("symbolButton");
 
     QFont bpmFont("Leland");
     bpmFont.setPointSize(22);
 
     bpmButton = makeButton(QString(QChar(0xE1D5)) + " = ?", 70);
+    bpmButton->setToolTip("Current Bpm");
     bpmButton->setFont(bpmFont);
     bpmButton->setStyleSheet(
         "QPushButton {"
@@ -171,13 +174,16 @@ Buttons::Buttons(QWidget *parent)
     );
 
     bpmUpButton = makeButton(":/images/upArrow.png", 28, "Up");
+    bpmUpButton->setToolTip("Double Bpm (Up)");
     bpmDownButton = makeButton(":/images/downArrow.png", 28, "Down");
+    bpmDownButton->setToolTip("Half Bpm (Down)");
 
     bpmButton->setFocusPolicy(Qt::NoFocus);
     bpmButton->setAttribute(Qt::WA_TransparentForMouseEvents);
 
     inputButton = new QToolButton(this);
     inputButton->setObjectName("inputButton");
+    inputButton->setToolTip("Select Input Device");
     inputButton->setText("Input Device:");
     inputButton->setCursor(Qt::PointingHandCursor);
     inputButton->setPopupMode(QToolButton::InstantPopup);
@@ -187,20 +193,30 @@ Buttons::Buttons(QWidget *parent)
     inputMenu = new QMenu(inputButton);
     inputMenu->setObjectName("inputMenu");
     inputButton->setMenu(inputMenu);
+    inputMenu->setStyleSheet(
+        "QPushButton {"
+        "    padding-top: 2px;"
+        "    padding-bottom: 14px;"
+        "}"
+    );
 
     zoomOutButton = makeButton("-", 32);
+    zoomOutButton->setToolTip("Zoom Out (Ctrl + Scrl)");
     zoomOutButton->setStyleSheet("QPushButton {font-size: 25px;}");
     zoomOutButton->setObjectName("symbolButton");
 
     zoomInButton = makeButton("+", 32);
+    zoomInButton->setToolTip("Zoom In (Ctrl + Scrl)");
     zoomInButton->setStyleSheet("QPushButton {font-size: 25px;}");
     zoomInButton->setObjectName("symbolButton");
 
-    viewToggleButton = makeButton("▢", 32);
+    viewToggleButton = makeButton("▢", 32, "v");
+    viewToggleButton->setToolTip("Toggle View Mode (V)");
     viewToggleButton->setObjectName("symbolButton");
 
     pitchLabel = new QLabel("Pitch: ?", this);
     pitchLabel->setObjectName("pitchLabel");
+    pitchLabel->setToolTip("Current Pitch");
     pitchLabel->setFixedWidth(80);
     pitchLabel->setFocusPolicy(Qt::NoFocus);
 
@@ -209,6 +225,7 @@ Buttons::Buttons(QWidget *parent)
 
     volumeMeter = new QLabel(this);
     volumeMeter->setFixedWidth(110);
+    volumeMeter->setToolTip("Current Volume");
     volumeMeter->setObjectName("volumeMeter");
     volumeMeter->setTextFormat(Qt::RichText);
     volumeMeter->setAlignment(Qt::AlignCenter);

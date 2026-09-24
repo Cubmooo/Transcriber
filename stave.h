@@ -12,6 +12,8 @@ public:
     void setNote(std::vector<std::pair<int, double>> BPMTimeList);
     void zoomBy(double factor);
     void setZoom(double value);
+    void scrollBy(int lines);
+    void resetScroll();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -22,6 +24,6 @@ private:
     QFont lelandFont;
     QFontMetrics lelandMetrics;
     StaveLayout style;
-    int notePosition = 0;
     double zoom = 0.5;
+    int scrollOffset = 0;
 };

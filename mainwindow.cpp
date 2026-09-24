@@ -57,6 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
             BPMTimeList.emplace_back(0, 0.0);
             bpmReady = false;
         }
+        stave->resetScroll();
         updateStave({});
     });
 
@@ -170,6 +171,12 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
         {
             if (wheelEvent->angleDelta().y() > 0){stave->zoomBy(1.1);}
             else if (wheelEvent->angleDelta().y() < 0) {stave->zoomBy(1.0 / 1.1);}
+            return true;
+        }
+        else if (auto *w = qobject_cast<QWidget *>(obj); w && (w == stave || stave->isAncestorOf(w)))
+        {
+            if (wheelEvent->angleDelta().y() > 0){stave->scrollBy(1);}
+            else if (wheelEvent->angleDelta().y() < 0) {stave->scrollBy(-1);}
             return true;
         }
     }
