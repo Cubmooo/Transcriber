@@ -11,6 +11,7 @@ public:
     explicit StaveWidget(QWidget *parent = nullptr);
     void setNote(std::vector<std::pair<int, double>> BPMTimeList);
     void zoomBy(double factor);
+    void setZoom(double value);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -22,5 +23,5 @@ private:
     QFontMetrics lelandMetrics;
     StaveLayout style;
     int notePosition = 0;
-    double zoom = 0.7;
+    double zoom = 0.5;
 };

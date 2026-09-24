@@ -27,6 +27,7 @@ signals:
     void bpmScaleRequested(double factor);
     void inputDeviceSelected(int device);
     void zoomRequested(double factor);
+    void viewToggleRequested();
  
 private:
     QPushButton *makeButton(const QString &content, int width, const QString &shortcut = QString());
@@ -37,6 +38,7 @@ private:
     QPushButton *bpmButton;
     QPushButton *bpmUpButton;
     QPushButton *bpmDownButton;
+    QPushButton *viewToggleButton;
     QPushButton *zoomOutButton;
     QPushButton *zoomInButton;
     PitchDial *pitchDial; QLabel *pitchLabel;

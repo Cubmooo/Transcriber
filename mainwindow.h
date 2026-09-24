@@ -20,5 +20,7 @@ private:
     StaveWidget *stave;
     StaveLayout style;
     Buttons *buttons;
+    QHBoxLayout *pageFrameLayout;
+    bool pageView = true;
     double tempoScale = 1.0;
 };

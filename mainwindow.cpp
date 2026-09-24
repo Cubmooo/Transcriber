@@ -108,7 +108,7 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *pageFrame = new QWidget(central);
     pageFrame->setStyleSheet("background-color: #444444;");
 
-    QHBoxLayout *pageFrameLayout = new QHBoxLayout(pageFrame);
+    pageFrameLayout = new QHBoxLayout(pageFrame);
     pageFrameLayout->setContentsMargins(0, 0, 0, 0);
     pageFrameLayout->setSpacing(0);
 
@@ -122,15 +122,24 @@ MainWindow::MainWindow(QWidget *parent)
     stave = new StaveWidget(page);
     pageLayout->addWidget(stave);
 
-    pageFrameLayout->addStretch(2);
+    pageFrameLayout->addStretch(2.5);
     pageFrameLayout->addWidget(page, 6);
-    pageFrameLayout->addStretch(2);
+    pageFrameLayout->addStretch(2.5);
 
     layout->addWidget(pageFrame, 1);
 
     connect(buttons, &Buttons::zoomRequested, this, [this](double factor)
     {
         stave->zoomBy(factor);
+    }); 
+
+    connect(buttons, &Buttons::viewToggleRequested, this, [this]()
+    {
+        pageView = !pageView;
+        pageFrameLayout->setStretch(0, pageView ? 2 : 0);
+        pageFrameLayout->setStretch(1, pageView ? 6 : 1);
+        pageFrameLayout->setStretch(2, pageView ? 2 : 0);
+        stave->setZoom(pageView ? 0.5 : 1.0);
     });
 
     showMaximized();

@@ -189,20 +189,15 @@ Buttons::Buttons(QWidget *parent)
     inputButton->setMenu(inputMenu);
 
     zoomOutButton = makeButton("-", 32);
-    zoomOutButton->setStyleSheet(
-        "QPushButton {"
-        "   font-size: 25px;"
-        "}"
-    );
+    zoomOutButton->setStyleSheet("QPushButton {font-size: 25px;}");
     zoomOutButton->setObjectName("symbolButton");
 
     zoomInButton = makeButton("+", 32);
-    zoomInButton->setStyleSheet(
-        "QPushButton {"
-        "   font-size: 25px;"
-        "}"
-    );
+    zoomInButton->setStyleSheet("QPushButton {font-size: 25px;}");
     zoomInButton->setObjectName("symbolButton");
+
+    viewToggleButton = makeButton("▢", 32);
+    viewToggleButton->setObjectName("symbolButton");
 
     pitchLabel = new QLabel("Pitch: ?", this);
     pitchLabel->setObjectName("pitchLabel");
@@ -245,6 +240,7 @@ Buttons::Buttons(QWidget *parent)
     constexpr int gapDownInput   = 12;
     constexpr int gapVolumePitch = 16;
     constexpr int gapZoom = 12;
+    constexpr int gapPageType = 12;
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(12, 3, 12, 5);
@@ -266,8 +262,12 @@ Buttons::Buttons(QWidget *parent)
 
     layout->addStretch();
 
-    layout->addWidget(zoomOutButton);
+    layout->addWidget(viewToggleButton);
+    layout->addSpacing(gapPageType);
+    layout->addWidget(makeSeparator());
+    layout->addSpacing(gapPageType);
     layout->addWidget(zoomInButton);
+    layout->addWidget(zoomOutButton);
     layout->addSpacing(gapZoom);
     layout->addWidget(makeSeparator());
     layout->addSpacing(gapZoom);
@@ -295,4 +295,6 @@ Buttons::Buttons(QWidget *parent)
 
     connect(zoomOutButton, &QPushButton::clicked, this, [this]() { emit zoomRequested(1.0 / 1.1); });
     connect(zoomInButton,  &QPushButton::clicked, this, [this]() { emit zoomRequested(1.1); });
+
+    connect(viewToggleButton, &QPushButton::clicked, this, [this]() { emit viewToggleRequested(); });
 }

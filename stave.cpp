@@ -34,6 +34,16 @@ void StaveWidget::zoomBy(double factor)
     update();
 }
 
+void StaveWidget::setZoom(double value)
+{
+    zoom = qBound(0.4, value, 3.0);
+    style = DefineLayoutConstants(height(), width(), zoom);
+    lelandFont.setPointSize(style.lelandFontSize);
+    setMinimumHeight(style.staveWidgetHeight);
+    noteWidget->setStaveLayout(style);
+    update();
+}
+
 void StaveWidget::resizeEvent(QResizeEvent *)
 {
     noteWidget->setGeometry(rect());
