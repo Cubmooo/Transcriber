@@ -379,7 +379,11 @@ void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &heads, const s
     }
     painter.restore();
 
-    QRectF beamRect(noteHeads.front().x(), beamY - style.beamThickness / 2.0, noteHeads.back().x() - noteHeads.front().x(), style.beamThickness);
+    const double halfStem = style.stemThickness / 2.0;
+    QRectF beamRect(noteHeads.front().x() - halfStem,
+                     beamY - style.beamThickness / 2.0,
+                     (noteHeads.back().x() - noteHeads.front().x()) + style.stemThickness,
+                     style.beamThickness);
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(Qt::black);
@@ -398,12 +402,14 @@ void drawBeamGroup(QPainter &painter, const std::vector<QPointF> &heads, const s
  
         double xa = noteHeads[k].x();
         if (k + 1 < noteHeads.size() && isShortNote(lengths[k + 1])){
-            painter.drawRect(QRectF(xa, beam2Y - style.beamThickness / 2.0, noteHeads[k + 1].x() - xa, style.beamThickness));
+            painter.drawRect(QRectF(xa - halfStem, beam2Y - style.beamThickness / 2.0,
+                (noteHeads[k + 1].x() - xa) + style.stemThickness, style.beamThickness));
         }
 
         else if (k == 0 || !isShortNote(lengths[k - 1])){
-            double xLeft = (k == 0) ? xa : xa - style.stubLength;
-            painter.drawRect(QRectF(xLeft, beam2Y - style.beamThickness / 2.0, style.stubLength, style.beamThickness));
+            double xLeft = (k == 0) ? xa - halfStem : xa - style.stubLength;
+            double stubWidth = (k == 0) ? style.stubLength + halfStem : style.stubLength;
+            painter.drawRect(QRectF(xLeft, beam2Y - style.beamThickness / 2.0, stubWidth, style.beamThickness));
         }
     }
     painter.restore();
