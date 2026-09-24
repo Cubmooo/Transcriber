@@ -15,6 +15,9 @@ public:
 public slots:
     void updateStave(std::vector<std::pair<int, double>> BPMTimeList);
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+
 private:
     QLabel *label;
     StaveWidget *stave;

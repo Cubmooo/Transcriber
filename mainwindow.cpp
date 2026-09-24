@@ -4,6 +4,8 @@
 #include "buttons.h"
 #include "globals.h"
 #include <QTimer>
+#include <QWheelEvent>
+#include <QApplication>
 
 extern std::mutex mtx;
 extern std::vector<std::pair<int, double>> BPMTimeList;
@@ -15,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QWidget *central = new QWidget(this);
     setCentralWidget(central);
+    qApp->installEventFilter(this);
 
     QVBoxLayout *layout = new QVBoxLayout(central);
     layout->setSpacing(0);
@@ -156,4 +159,19 @@ void MainWindow::updateStave(std::vector<std::pair<int, double>> BPMTimeList)
         n.second *= tempoScale;
     stave->setNote(BPMTimeList);
     buttons->setBPM(60.0 * bps * tempoScale);
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::Wheel)
+    {
+        auto *wheelEvent = static_cast<QWheelEvent *>(event);
+        if (wheelEvent->modifiers() & Qt::ControlModifier)
+        {
+            if (wheelEvent->angleDelta().y() > 0){stave->zoomBy(1.1);}
+            else if (wheelEvent->angleDelta().y() < 0) {stave->zoomBy(1.0 / 1.1);}
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
